@@ -1,0 +1,118 @@
+id: vegamovies
+name: VegaMovies
+version: '1'
+parser: rogmovies
+content_root: main.page-body
+screenshot_hosts:
+- imgbb.fit
+- i.ibb.co
+- catimages.co
+- image.ibb.co
+- www.hdwallpapers.in
+image_base: https://static.kuroiru.co
+enabled: true
+priority: 10
+base_url: https://new2.vegamovies.futbol
+mirrors: []
+capabilities:
+  movies: true
+  series: true
+  anime: true
+  packs: true
+  episodes: true
+  languages: true
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+  headers: {}
+  wait_selector: null
+  max_redirects: 8
+search:
+  path: /search.php
+  parameter: q
+  method: GET
+  container: '#results-grid'
+  card: :scope > a
+  title:
+  - .poster-title
+  poster:
+  - img
+  metadata:
+  - .poster-title
+  tags: []
+  link: ''
+  empty:
+  - .no-results
+  next_page: []
+  max_pages: 3
+selectors:
+  title:
+  - h1.entry-title
+  - article h1
+  - h1
+  poster:
+  - img[src*="image.tmdb.org"]
+  description:
+  - .detail-description
+  tagline:
+  - .movie-tagline
+  metadata_item: .metadata-item
+  metadata_label: .metadata-label
+  metadata_value: .metadata-value
+  movie_root: .download-groups
+  pack_root: '#complete-pack'
+  episodes_root: '#episodes'
+  season_group: .series-season-group
+  season_title: .series-season-toggle strong
+  group: .download-group
+  group_title: .download-group-title
+  item: .download-item
+  header: .download-header
+  filename: .file-title
+  episode: .episode-download-item
+  episode_container: .episode-item
+  episode_header: .episode-header
+  episode_filename: .episode-file-title
+  episode_number: .badge-psa
+  episode_size: .badge-size
+  links: a[href]
+metadata_labels:
+  director:
+  - Director
+  stars:
+  - Stars
+  release:
+  - Release
+  last_air:
+  - Last Air
+  audios:
+  - Audios
+  seasons:
+  - Seasons
+  prints:
+  - Print
+  - Prints
+providers:
+- nexdrive
+- fastdl
+- vcloud
+provider_hosts:
+- nexdrive.fit
+- fastdl.zip
+- vcloud.fit
+fixtures:
+  search: tests/fixtures/new_sources/vegamovies-search.html
+normalization: {}
+extract: {}
+transform: {}
+features:
+  search_cache: true
+  detail_cache: true
+  fallback: true
+  language_menu: true
+  variant_menu: true
+  description: true
+  tagline: true
+  director: true
+search_api: /ts-search.php

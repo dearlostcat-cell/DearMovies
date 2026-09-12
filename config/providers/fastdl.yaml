@@ -1,0 +1,24 @@
+id: fastdl
+version: '1'
+hosts:
+- fastdl.zip
+allowed_hosts:
+- nexdrive.fit
+- fastdl.zip
+- vcloud.fit
+- video-downloads.googleusercontent.com
+- '*.r2.dev'
+- pixeldrain.dev
+mode: links
+query_url_parameters:
+- link
+request:
+  timeout: 20
+  retries: 1
+  transport: http
+link_selectors:
+- a#vd[href]
+literal_url_patterns:
+- \bvar\s+reurl\s*=\s*["\x27](https://fastdl\.zip/[^"\x27]+)
+path_pattern: .*
+steps: []

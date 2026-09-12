@@ -1,0 +1,55 @@
+id: 4khdhub
+name: 4KHDHub
+version: "1.0"
+parser: html_catalog
+enabled: true
+priority: 10
+base_url: https://4khdhub.one
+mirrors: []
+capabilities:
+  movies: true
+  series: true
+  anime: true
+  packs: true
+  episodes: true
+  languages: true
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+search:
+  path: /
+  parameter: s
+  container: main .latest-releases
+  card: a.movie-card
+  title: [.movie-card-title]
+  poster: [img]
+  metadata: [.movie-card-meta]
+  tags: [.movie-card-formats, .quality-badges]
+  empty: [.no-results, .no-results-found, .empty-state]
+  next_page: [a.next.page-numbers, 'a[rel="next"]']
+  max_pages: 3
+selectors:
+  title: [h1.page-title]
+  poster: [.poster-image img]
+  description: [.detail-description]
+  tagline: [.movie-tagline]
+  movie_root: .content-main
+  pack_root: '#complete-pack'
+  episodes_root: '#episodes'
+providers: [hubcloud, hubdrive, generator]
+provider_hosts:
+  - hubcloud.ist
+  - hubcloud.cx
+  - hubcloud.bz
+  - hubcloud.foo
+  - hubcloud.one
+  - hubcloud.in
+  - hubcloud.ink
+  - hubcloud.fyi
+  - hubdrive.tips
+  - hubdrive.me
+fixtures:
+  search: tests/fixtures/search.html
+  movie: tests/fixtures/movie.html
+  series: tests/fixtures/series.html

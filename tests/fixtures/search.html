@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html class="dark">
+<head>
+
+
+<title>Search - dear - 4KHDHub</title>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</head>
+<body>
+<div class="flex min-h-screen flex-col">
+<header class="sticky top-0 z-50 w-full">
+<div class="header">
+<div class="container flex h-14 items-center justify-between">
+
+<div class="flex items-center">
+<button class="menu-toggle md:hidden" id="menu-toggle">
+<svg class="h-5 w-5">
+<line></line>
+<line></line>
+<line></line>
+</svg>
+<span class="sr-only">Toggle menu</span>
+</button>
+<a class="navbar-brand" href="/">
+<img alt="4KHDHub logo" class="h-8 w-auto" id="logo" src="/images/4KHDHUB-Bright-Logo.png"/>
+</a>
+</div>
+
+<nav class="main-nav" id="main-nav">
+<ul class="nav-list">
+<li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+<li class="nav-item dropdown">
+<a class="nav-link dropdown-toggle" href="#">
+                Movies
+                <svg class="dropdown-indicator h-4 w-4">
+<polyline></polyline>
+</svg>
+</a>
+<ul class="dropdown-menu">
+<li><a class="dropdown-item" href="/category/movies/">Latest Movies</a></li>
+<li><a class="dropdown-item" href="/category/hindi-movies/">Hindi Movies</a></li>
+<li><a class="dropdown-item" href="/category/english-movies/">English Movies</a></li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a class="nav-link dropdown-toggle" href="#">
+                Web Series
+                <svg class="dropdown-indicator h-4 w-4">
+<polyline></polyline>
+</svg>
+</a>
+<ul class="dropdown-menu">
+<li><a class="dropdown-item" href="/category/series/">Latest Episodes</a></li>
+<li><a class="dropdown-item" href="/category/korean-series/">Korean</a></li>
+<li><a class="dropdown-item" href="/category/drama-series/">Drama</a></li>
+<li><a class="dropdown-item" href="/category/hindi-series/">Hindi Series</a></li>
+<li><a class="dropdown-item" href="/category/english-series/">English Series</a></li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a class="nav-link dropdown-toggle" href="#">
+                OTT
+                <svg class="dropdown-indicator h-4 w-4">
+<polyline></polyline>
+</svg>
+</a>
+<ul class="dropdown-menu">
+<li><a class="dropdown-item" href="/category/netflix/">Netflix</a></li>
+<li><a class="dropdown-item" href="/category/amazon_prime_video/">Amazon Prime Video</a></li>
+<li><a class="dropdown-item" href="/category/jiohotstar/">JioHotstar</a></li>
+<li><a class="dropdown-item" href="/category/disney/">Disney+</a></li>
+<li><a class="dropdown-item" href="/category/apple_tv/">Apple TV+</a></li>
+<li><a class="dropdown-item" href="/category/hbo_max/">HBO Max</a></li>
+<li><a class="dropdown-item" href="/category/hulu/">Hulu</a></li>
+<li><a class="dropdown-item" href="/category/crave/">Crave</a></li>
+</ul>
+</li>
+<li class="nav-item"><a class="nav-link" href="/category/anime/">Anime</a></li>
+<li class="nav-item"><a class="nav-link" href="/category/2160p-HDR/">4K HDR</a></li>
+<li class="nav-item"><a class="nav-link" href="/category/imdb/">Top IMdb</a></li>
+</ul>
+</nav>
+
+<div class="flex items-center">
+<button class="search-toggle" id="search-toggle">
+<svg class="h-5 w-5">
+<circle></circle>
+<line></line>
+</svg>
+<span class="sr-only">Search</span>
+</button>
+<div class="search-container hidden md:flex">
+<svg class="search-icon h-4 w-4">
+<circle></circle>
+<line></line>
+</svg>
+            for
+            
+</div>
+<button class="theme-toggle" id="theme-toggle">
+<svg class="theme-icon h-5 w-5">
+<circle></circle>
+<line></line>
+<line></line>
+<line></line>
+<line></line>
+<line></line>
+<line></line>
+<line></line>
+<line></line>
+</svg>
+<span class="sr-only">Toggle theme</span>
+</button>
+</div>
+</div>
+</div>
+
+<div class="fixed inset-0 bg-black/70 hidden" id="mobile-menu-backdrop"></div>
+
+<button class="fixed top-4 right-4 p-2 rounded-full z-[60] hidden" id="close-mobile-menu">
+<svg class="h-5 w-5">
+<line></line>
+<line></line>
+</svg>
+</button>
+
+<div class="fixed inset-0 z-50 hidden" id="search-overlay">
+<div class="fixed" id="search-backdrop"></div>
+<button class="absolute right-4 top-4 p-2 rounded-full" id="close-search">
+<svg class="h-5 w-5">
+<line></line>
+<line></line>
+</svg>
+<span class="sr-only">Close</span>
+</button>
+<form class="search-form">
+<div class="search-input-container">
+<svg class="search-icon-overlay">
+<circle></circle>
+<line></line>
+</svg>
+
+</div>
+<button class="search-submit">
+          Search
+        </button>
+</form>
+</div>
+</header>
+<div class="transition-fade flex flex-1 flex-col w-full" id="swup">
+<main class="flex-1">
+<div class="container">
+<section class="latest-releases">
+<div class="latest-releases-header">
+<h2 class="latest-releases-title">
+<span><svg><path></path></svg></span> Search - dear          </h2>
+</div>
+<div class="card-grid">
+<a class="movie-card" href="/dear-x-series-4301/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-fhd">FHD</span></div> <img alt="Dear X" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/wZEKHPaeMCihLZWqjOaEtXFA87x.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">Thriller</span>
+<span class="movie-card-format">Crime</span>
+<span class="movie-card-format">Romance</span>
+<span class="movie-card-format">Hindi</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">Series</span>
+<span class="movie-card-format">Amazon Prime Video</span>
+<span class="movie-card-format">HBO Max</span>
+<span class="movie-card-format">Korean</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Dear X</h3>
+<p class="movie-card-meta">2025              • S01 EP12              </p>
+</div>
+</a>
+<a class="movie-card" href="/dear-killer-nannies-series-6286/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-4k">4K</span><span class="quality-badge badge-dv">DV</span><span class="quality-badge badge-hdr">HDR</span></div> <img alt="Dear Killer Nannies" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/bGRezoCqNtiKwNDB9hszImOs6ut.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">Crime</span>
+<span class="movie-card-format">English</span>
+<span class="movie-card-format">2160p</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">DSNP</span>
+<span class="movie-card-format">Series</span>
+<span class="movie-card-format">DV HDR</span>
+<span class="movie-card-format">Disney+</span>
+<span class="movie-card-format">Hulu</span>
+<span class="movie-card-format">Spanish</span>
+<span class="movie-card-format">SDR</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Dear Killer Nannies</h3>
+<p class="movie-card-meta">2026              • S01              </p>
+</div>
+</a>
+<a class="movie-card" href="/dear-life-series-6094/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-4k">4K</span><span class="quality-badge badge-hdr">HDR</span></div> <img alt="Dear Life" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/pymuhdTFbRAsd5EOykleb6cEEEz.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">English</span>
+<span class="movie-card-format">2160p</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">HDR</span>
+<span class="movie-card-format">Series</span>
+<span class="movie-card-format">SDR</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Dear Life</h3>
+<p class="movie-card-meta">2026              • S01              </p>
+</div>
+</a>
+<a class="movie-card" href="/dear-my-secretary-series-5642/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-fhd">FHD</span></div> <img alt="Dear My Secretary" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/mqqOLB76zkJ72vqhWLchWskXxIF.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">Comedy</span>
+<span class="movie-card-format">Mystery</span>
+<span class="movie-card-format">Romance</span>
+<span class="movie-card-format">Hindi</span>
+<span class="movie-card-format">Series</span>
+<span class="movie-card-format">Amazon Prime Video</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Dear My Secretary</h3>
+<p class="movie-card-meta">2025              • S01              </p>
+</div>
+</a>
+<a class="movie-card" href="/dear-john-movie-3258/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-bd">BD</span></div> <img alt="Dear John" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/2lAPv2jQ5eh54l4EttA9wjDljED.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">Romance</span>
+<span class="movie-card-format">War</span>
+<span class="movie-card-format">English</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">BluRay</span>
+<span class="movie-card-format">Movies</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Dear John</h3>
+<p class="movie-card-meta">2010                            </p>
+</div>
+</a>
+<a class="movie-card" href="/dear-hongrang-series-852/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-fhd">FHD</span></div> <img alt="Dear Hongrang" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/mWGil4jL1jaCoZkZuaNThh0aoVC.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">History</span>
+<span class="movie-card-format">Mystery</span>
+<span class="movie-card-format">Romance</span>
+<span class="movie-card-format">Hindi</span>
+<span class="movie-card-format">English</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">Series</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Dear Hongrang</h3>
+<p class="movie-card-meta">2025              • S01              </p>
+</div>
+</a>
+<a class="movie-card" href="/dear-eleanor-movie-753/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-fhd">FHD</span></div> <img alt="Dear Eleanor" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/tMG1e83PHqtjQLgXZhy2IMn3eX0.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Adventure</span>
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">Comedy</span>
+<span class="movie-card-format">Hindi</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">Movies</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Dear Eleanor</h3>
+<p class="movie-card-meta">2016                            </p>
+</div>
+</a>
+<a class="movie-card" href="/my-dear-lady-series-420/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-fhd">FHD</span></div> <img alt="My Dear Lady" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/oOAnNc1WR7nVkkUZEYo1Rah33YH.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Series</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">My Dear Lady</h3>
+<p class="movie-card-meta">2020              • S01              </p>
+</div>
+</a>
+<a class="movie-card" href="/my-dearest-assassin-movie-6757/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-4k">4K</span><span class="quality-badge badge-dv">DV</span><span class="quality-badge badge-hdr">HDR</span></div> <img alt="My Dearest Assassin" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/ul4dQcA68mtSx8J56N5gEcaCCtP.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">Action</span>
+<span class="movie-card-format">Thriller</span>
+<span class="movie-card-format">Romance</span>
+<span class="movie-card-format">English</span>
+<span class="movie-card-format">2160p</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">Netflix</span>
+<span class="movie-card-format">Movies</span>
+<span class="movie-card-format">DV HDR</span>
+<span class="movie-card-format">SDR</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">My Dearest Assassin</h3>
+<p class="movie-card-meta">2026                            </p>
+</div>
+</a>
+<a class="movie-card" href="/my-dearest-seorita-movie-6703/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-4k">4K</span><span class="quality-badge badge-dv">DV</span><span class="quality-badge badge-hdr">HDR</span></div> <img alt="My Dearest Señorita" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/cTcJs2bEsJDhQEpeYSOZD3yayZI.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">Romance</span>
+<span class="movie-card-format">Hindi</span>
+<span class="movie-card-format">English</span>
+<span class="movie-card-format">2160p</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">Netflix</span>
+<span class="movie-card-format">Tamil</span>
+<span class="movie-card-format">Movies</span>
+<span class="movie-card-format">DV HDR</span>
+<span class="movie-card-format">Telugu</span>
+<span class="movie-card-format">Spanish</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">My Dearest Señorita</h3>
+<p class="movie-card-meta">2026                            </p>
+</div>
+</a>
+<a class="movie-card" href="/my-dearest-series-4773/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-fhd">FHD</span></div> <img alt="My Dearest" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/d00uWx8T84ZRsguQTqITl3HnFJO.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Drama</span>
+<span class="movie-card-format">History</span>
+<span class="movie-card-format">Mystery</span>
+<span class="movie-card-format">Romance</span>
+<span class="movie-card-format">Hindi</span>
+<span class="movie-card-format">Series</span>
+<span class="movie-card-format">Amazon Prime Video</span>
+<span class="movie-card-format">Korean</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">My Dearest</h3>
+<p class="movie-card-meta">2023              • S01              </p>
+</div>
+</a>
+<a class="movie-card" href="/mummy-dearest-movie-2094/">
+<div class="movie-card-image">
+<div class="quality-badges"><span class="quality-badge badge-fhd">FHD</span></div> <img alt="Mummy Dearest" class="w-full h-full object-cover" src="https://image.tmdb.org/t/p/w500/yFCbjdrVx0E6v87TsJFqyMLpRpc.jpg"/>
+<div class="movie-card-overlay">
+<div class="movie-card-formats">
+<span class="movie-card-format">Horror</span>
+<span class="movie-card-format">Thriller</span>
+<span class="movie-card-format">Mystery</span>
+<span class="movie-card-format">Dual Language</span>
+<span class="movie-card-format">1080p</span>
+<span class="movie-card-format">WEB-DL</span>
+<span class="movie-card-format">Hollywood</span>
+<span class="movie-card-format">Movies</span>
+</div>
+</div>
+</div>
+<div class="movie-card-content">
+<h3 class="movie-card-title">Mummy Dearest</h3>
+<p class="movie-card-meta">2021                            </p>
+</div>
+</a>
+</div>
+</section>
+<div class="pagination-container">
+<div class="pagination-container">
+<div class="pagination">
+<a class="pagination-item active">1</a>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="border-t bg-background">
+<div class="container py-8 md:py-12">
+<div class="grid grid-cols-1 gap-8 md:grid-cols-4 justify-center text-center md:text-left">
+<div class="space-y-4">
+<h3 class="text-lg font-semibold">4KHDHub</h3>
+<p class="text-sm text-muted-foreground">
+            Your one-stop destination for high-quality movies and TV shows in various formats.
+          </p>
+</div>
+<div class="space-y-4">
+<h3 class="text-lg font-semibold">Quick Links</h3>
+<ul class="flex flex-wrap justify-center gap-4 text-sm">
+<li>
+<a class="text-muted-foreground hover:text-primary" href="/about">
+                About Us
+              </a>
+</li>
+<li>
+<a class="text-muted-foreground hover:text-primary" href="/contact">
+                Contact Us
+              </a>
+</li>
+<li>
+<a class="text-muted-foreground hover:text-primary" href="/dmca">
+                DMCA
+              </a>
+</li>
+<li>
+<a class="text-muted-foreground hover:text-primary" href="/privacy-policy">
+                Privacy Policy
+              </a>
+</li>
+</ul>
+</div>
+<div class="space-y-4">
+<h3 class="text-lg font-semibold">Connect</h3>
+<p class="text-sm text-muted-foreground">Stay updated with the latest releases and news.</p>
+</div>
+</div>
+<div class="mt-8 border-t pt-8 text-center">
+<p class="text-xs text-muted-foreground">© <span id="current-year">2025</span> 4KHDHub - All rights reserved.</p>
+<p class="text-xs text-muted-foreground mt-2">Made by <a class="hover:text-primary" href="https://hdhub4u.download/">HDHub4U Team</a></p>
+</div>
+</div>
+</footer>
+<button class="fixed bottom-6 right-6 z-50 rounded-full shadow-md transition-opacity duration-300 opacity-0 pointer-events-none bg-primary text-primary-foreground p-2" id="back-to-top">
+<svg>
+<path></path>
+</svg>
+</button>
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

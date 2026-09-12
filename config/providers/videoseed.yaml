@@ -1,0 +1,41 @@
+id: videoseed
+version: '1'
+hosts:
+- cdn.video-gen.xyz
+- video-seed.dev
+path_pattern: .*
+allowed_hosts:
+- links.modpro.blog
+- episodes.modpro.blog
+- leechpro.blog
+- cloud.unblockedgames.world
+- driveseed.org
+- driveleech.org
+- cdn.video-gen.xyz
+- video-seed.dev
+- '*.workers.dev'
+- '*.googleusercontent.com'
+mode: links
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+  headers: {}
+  wait_selector: null
+  max_redirects: 8
+link_selectors:
+- a#downloadBtn[href]
+literal_url_patterns: []
+query_url_parameters:
+- url
+steps: []
+max_steps: 20
+max_hops: 16
+fallback_on:
+- TIMEOUT
+- UNAVAILABLE
+- INVALID_RESPONSE
+- UNSUPPORTED
+- LINK_EXPIRED
+- ROUTE_REVISITED
+- REDIRECT_LOOP

@@ -1,0 +1,114 @@
+id: hdhub4u
+name: HDHub4u
+version: '1'
+parser: hdhub
+content_root: main.page-body
+screenshot_hosts:
+- catimages.co
+image_base: https://static.kuroiru.co
+enabled: true
+priority: 10
+base_url: https://new5.hdhub4u.cl
+mirrors: []
+capabilities:
+  movies: true
+  series: true
+  anime: true
+  packs: true
+  episodes: true
+  languages: true
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+  headers: {}
+  wait_selector: null
+  max_redirects: 8
+search:
+  path: /search.html
+  parameter: q
+  method: GET
+  container: body
+  card: li.movie-card
+  title:
+  - h3.movie-title
+  poster:
+  - img
+  metadata:
+  - h3.movie-title
+  tags: []
+  link: a
+  empty:
+  - .no-results
+  next_page:
+  - a[rel="next"]
+  max_pages: 3
+selectors:
+  title:
+  - h1
+  poster:
+  - img[src*="image.tmdb.org"]
+  description:
+  - .detail-description
+  tagline:
+  - .movie-tagline
+  metadata_item: .metadata-item
+  metadata_label: .metadata-label
+  metadata_value: .metadata-value
+  movie_root: .download-groups
+  pack_root: '#complete-pack'
+  episodes_root: '#episodes'
+  season_group: .series-season-group
+  season_title: .series-season-toggle strong
+  group: .download-group
+  group_title: .download-group-title
+  item: .download-item
+  header: .download-header
+  filename: .file-title
+  episode: .episode-download-item
+  episode_container: .episode-item
+  episode_header: .episode-header
+  episode_filename: .episode-file-title
+  episode_number: .badge-psa
+  episode_size: .badge-size
+  links: a[href]
+metadata_labels:
+  director:
+  - Director
+  stars:
+  - Stars
+  release:
+  - Release
+  last_air:
+  - Last Air
+  audios:
+  - Audios
+  seasons:
+  - Seasons
+  prints:
+  - Print
+  - Prints
+providers:
+- greenmount
+- hubdrive
+- hubcloud
+- generator
+provider_hosts:
+- greenmountmotors.com
+- hubdrive.tips
+- hubcloud.ist
+- hubcloud.cx
+fixtures: {}
+normalization: {}
+extract: {}
+transform: {}
+features:
+  search_cache: true
+  detail_cache: true
+  fallback: true
+  language_menu: true
+  variant_menu: true
+  description: true
+  tagline: true
+  director: true
+search_api: https://search.pingora.fyi/collections/post/documents/search

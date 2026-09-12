@@ -1,0 +1,24 @@
+id: vcloud
+version: '1'
+hosts:
+- vcloud.fit
+allowed_hosts:
+- nexdrive.fit
+- fastdl.zip
+- vcloud.fit
+- video-downloads.googleusercontent.com
+- '*.r2.dev'
+- pixeldrain.dev
+mode: links
+query_url_parameters: []
+request:
+  timeout: 20
+  retries: 1
+  transport: http
+link_selectors:
+- a#fsl[href]
+- a#pxl-1[href]
+- a[href*="pixeldrain.dev/u/"]
+literal_url_patterns: []
+path_pattern: .*
+steps: []

@@ -1,0 +1,32 @@
+# Copy to a new filename and configure real hosts and selectors.
+id: example
+version: '1'
+hosts:
+- links.example.com
+path_pattern: .*
+allowed_hosts:
+- links.example.com
+- files.example.com
+mode: links
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+  headers: {}
+  wait_selector: null
+  max_redirects: 8
+link_selectors:
+- a#download
+literal_url_patterns: []
+query_url_parameters: []
+steps: []
+max_steps: 20
+max_hops: 16
+fallback_on:
+- TIMEOUT
+- UNAVAILABLE
+- INVALID_RESPONSE
+- UNSUPPORTED
+- LINK_EXPIRED
+- ROUTE_REVISITED
+- REDIRECT_LOOP

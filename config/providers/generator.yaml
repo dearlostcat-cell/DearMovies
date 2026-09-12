@@ -1,0 +1,23 @@
+id: generator
+version: "1.1"
+hosts: [gamerxyt.com, gpdl.hubcloud.cx, gpdl.hubcloud.ist, gpdl.rohitkiskk.workers.dev]
+allowed_hosts: [gamerxyt.com, gpdl.hubcloud.cx, gpdl.hubcloud.ist, gpdl.rohitkiskk.workers.dev, pixel.hubcloud.cx, pixel.rohitkiskk.workers.dev, pixeldrain.dev, '*.googleusercontent.com', storage.googleapis.com, index.jiomedia.workers.dev, hubcloud.cx, hubcloud.ist]
+mode: links
+query_url_parameters: [link]
+request:
+  timeout: 20
+  retries: 1
+  transport: http
+link_selectors:
+  - 'a#downloadBtn[href]'
+  - 'a[href*="gpdl."]'
+  - 'a[href*="/re/testzip.php"]'
+  - 'a[href*="storage.googleapis.com/"]'
+  - 'a[href*="index.jiomedia.workers.dev/"]'
+  - 'a[href*="video-downloads.googleusercontent.com/"]'
+  - 'a.rd_btn[href]'
+  - 'a#download[href]'
+  - 'a[href*="pixel.hubcloud.cx/"]'
+  - 'a#pxl-1[href*="pixeldrain.dev/"]'
+literal_url_patterns:
+  - '(?:var|let|const)\s+(?:url|downloadUrl|downloadLink|pxl)\s*=\s*["\x27](https?://[^"\x27]+)'

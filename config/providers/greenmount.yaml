@@ -1,0 +1,36 @@
+id: greenmount
+version: '1'
+hosts:
+- greenmountmotors.com
+path_pattern: .*
+allowed_hosts:
+- greenmountmotors.com
+- hubdrive.tips
+- hubcloud.ist
+- hubcloud.cx
+- hblinks.co
+mode: links
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+  headers: {}
+  wait_selector: null
+  max_redirects: 8
+link_selectors:
+- a[href*="hubdrive.tips/"]
+- a[href*="hubcloud."]
+literal_url_patterns:
+- (?:location(?:\.href)?|url)\s*=\s*["\x27](https?://(?:hubdrive\.tips|hubcloud\.ist|hubcloud\.cx)/[^"\x27]+)
+query_url_parameters: []
+steps: []
+max_steps: 20
+max_hops: 16
+fallback_on:
+- TIMEOUT
+- UNAVAILABLE
+- INVALID_RESPONSE
+- UNSUPPORTED
+- LINK_EXPIRED
+- ROUTE_REVISITED
+- REDIRECT_LOOP

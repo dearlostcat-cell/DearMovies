@@ -1,0 +1,106 @@
+id: kuroiru
+name: Kuroiru
+version: '1'
+parser: kuroiru
+content_root: .thecontent
+screenshot_hosts: []
+image_base: https://static.kuroiru.co
+enabled: true
+priority: 10
+base_url: https://kuroiru.co
+mirrors: []
+capabilities:
+  movies: true
+  series: true
+  anime: true
+  packs: true
+  episodes: true
+  languages: true
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+  headers: {}
+  wait_selector: null
+  max_redirects: 8
+search:
+  path: /
+  parameter: s
+  method: GET
+  container: main
+  card: a.movie-card
+  title:
+  - .movie-card-title
+  poster:
+  - img
+  metadata:
+  - .movie-card-meta
+  tags:
+  - .movie-card-formats
+  - .quality-badges
+  link: null
+  empty:
+  - .no-results
+  next_page:
+  - a.next.page-numbers
+  max_pages: 3
+selectors:
+  title:
+  - h1.page-title
+  poster:
+  - .poster-image img
+  description:
+  - .detail-description
+  tagline:
+  - .movie-tagline
+  metadata_item: .metadata-item
+  metadata_label: .metadata-label
+  metadata_value: .metadata-value
+  movie_root: .download-groups
+  pack_root: '#complete-pack'
+  episodes_root: '#episodes'
+  season_group: .series-season-group
+  season_title: .series-season-toggle strong
+  group: .download-group
+  group_title: .download-group-title
+  item: .download-item
+  header: .download-header
+  filename: .file-title
+  episode: .episode-download-item
+  episode_container: .episode-item
+  episode_header: .episode-header
+  episode_filename: .episode-file-title
+  episode_number: .badge-psa
+  episode_size: .badge-size
+  links: a[href]
+metadata_labels:
+  director:
+  - Director
+  stars:
+  - Stars
+  release:
+  - Release
+  last_air:
+  - Last Air
+  audios:
+  - Audios
+  seasons:
+  - Seasons
+  prints:
+  - Print
+  - Prints
+providers: []
+provider_hosts: []
+fixtures: {}
+normalization: {}
+extract: {}
+transform: {}
+features:
+  search_cache: true
+  detail_cache: true
+  fallback: true
+  language_menu: true
+  variant_menu: true
+  description: true
+  tagline: true
+  director: true

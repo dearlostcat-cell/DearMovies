@@ -1,0 +1,119 @@
+id: moviesleech
+name: MoviesLeech
+version: '1'
+parser: wordpress
+content_root: .thecontent
+screenshot_hosts:
+- blogger.googleusercontent.com
+image_base: https://static.kuroiru.co
+enabled: true
+priority: 10
+base_url: https://moviesleech.art
+mirrors: []
+capabilities:
+  movies: true
+  series: true
+  anime: true
+  packs: true
+  episodes: true
+  languages: true
+request:
+  timeout: 20
+  retries: 2
+  transport: http
+  headers: {}
+  wait_selector: null
+  max_redirects: 8
+search:
+  path: /
+  parameter: s
+  method: GET
+  container: '#content_box'
+  card: article.latestPost
+  title:
+  - h2.title a
+  poster:
+  - img
+  metadata:
+  - h2.title a
+  tags: []
+  link: a.post-image
+  empty:
+  - .no-results
+  next_page:
+  - a.next.page-numbers
+  - a.nextpostslink
+  - a[rel="next"]
+  max_pages: 3
+selectors:
+  title:
+  - h1.title
+  - h1
+  poster:
+  - img.aligncenter
+  - p img
+  description:
+  - .detail-description
+  tagline:
+  - .movie-tagline
+  metadata_item: .metadata-item
+  metadata_label: .metadata-label
+  metadata_value: .metadata-value
+  movie_root: .thecontent
+  pack_root: '#complete-pack'
+  episodes_root: '#episodes'
+  season_group: .series-season-group
+  season_title: .series-season-toggle strong
+  group: .download-group
+  group_title: .download-group-title
+  item: .download-item
+  header: .download-header
+  filename: .file-title
+  episode: .episode-download-item
+  episode_container: .episode-item
+  episode_header: .episode-header
+  episode_filename: .episode-file-title
+  episode_number: .badge-psa
+  episode_size: .badge-size
+  links: a[href]
+metadata_labels:
+  director:
+  - Director
+  stars:
+  - Stars
+  release:
+  - Release
+  last_air:
+  - Last Air
+  audios:
+  - Audios
+  seasons:
+  - Seasons
+  prints:
+  - Print
+  - Prints
+providers:
+- modpro
+- cloudbridge
+- driveseed
+- videoseed
+provider_hosts:
+- links.modpro.blog
+- episodes.modpro.blog
+- leechpro.blog
+- cloud.unblockedgames.world
+- driveseed.org
+- driveleech.org
+fixtures: {}
+normalization: {}
+extract: {}
+transform: {}
+features:
+  search_cache: true
+  detail_cache: true
+  fallback: true
+  language_menu: true
+  variant_menu: true
+  description: true
+  tagline: true
+  director: true

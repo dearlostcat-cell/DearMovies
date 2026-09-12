@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.db
+*.sqlite*
+data/
+backups/
+assets/*
+!assets/README.txt
+!assets/dear.mp4

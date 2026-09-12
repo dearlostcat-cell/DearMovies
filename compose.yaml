@@ -1,0 +1,73 @@
+name: lost-movies
+services:
+  bot:
+    image: lost-movies:2.1.1
+    build:
+      context: .
+      args:
+        INSTALL_BROWSER: ${BROWSER_ENABLED:-false}
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:?Set BOT_TOKEN in .env}
+      OWNER_IDS: ${OWNER_IDS:?Set OWNER_IDS in .env}
+      WEB_CONTROL_PASSWORD: ${WEB_CONTROL_PASSWORD:?Set WEB_CONTROL_PASSWORD in .env}
+      DATABASE_URL: postgresql+psycopg://lostmovies:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/lostmovies
+      PORT: '8080'
+      BROWSER_ENABLED: ${BROWSER_ENABLED:-false}
+      MOCK_MODE: 'false'
+      DRY_RUN: 'false'
+    ports:
+      - '127.0.0.1:8080:8080'
+    volumes:
+      - bot_data:/app/data
+      - ./assets:/app/assets:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lostmovies
+      POSTGRES_DB: lostmovies
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lostmovies -d lostmovies']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+  caddy:
+    image: caddy:2-alpine
+    profiles: ['https']
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      bot:
+        condition: service_healthy
+volumes:
+  postgres_data:
+  bot_data:
+  caddy_data:
+  caddy_config:
