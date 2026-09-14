@@ -9,11 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Linux amd64 image with welcome video
-        run: docker build -t lost-movies:2.2.0 .
+        run: docker build -t lost-movies:2.2.1 .
       - name: Check bundled video and web startup without Telegram
         run: |
-          docker run --rm --entrypoint python lost-movies:2.2.0 -c "from pathlib import Path; assert Path('/app/assets/dear.mp4').stat().st_size > 0"
-          docker run -d --name smoke -p 127.0.0.1:8080:8080 lost-movies:2.2.0
+          docker run --rm --entrypoint python lost-movies:2.2.1 -c "from pathlib import Path; assert Path('/app/assets/dear.mp4').stat().st_size > 0"
+          docker run -d --name smoke -p 127.0.0.1:8080:8080 lost-movies:2.2.1
           trap 'docker logs smoke; docker rm -f smoke' EXIT
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8080/health; then break; fi
@@ -21,9 +21,9 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8080/health
       - name: Export image
-        run: docker save lost-movies:2.2.0 | gzip > lost-movies-2.2.0-linux-amd64.tar.gz
+        run: docker save lost-movies:2.2.1 | gzip > lost-movies-2.2.1-linux-amd64.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: lost-movies-docker-image-linux-amd64
-          path: lost-movies-2.2.0-linux-amd64.tar.gz
+          path: lost-movies-2.2.1-linux-amd64.tar.gz
           retention-days: 7

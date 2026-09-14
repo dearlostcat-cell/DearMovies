@@ -35,6 +35,77 @@ def test_recovery_ignores_ads_and_private_destinations():
     links,unknown=recovery_links(doc,'https://host.example/a',['host.example','cdn.example'],lambda _:None)
     assert links==['https://cdn.example/f'] and unknown==['new.example']
 
+
+def test_known_provider_navigation_and_auth_are_not_downloads():
+    r=Registry();r.load()
+    resolver=Resolver(r,None,None)
+    base='https://hubdrive.sbs/file/a'
+    doc=soup('''<a href="/">Home</a><a href="/terms">Terms</a>
+        <a href="/file/unrelated">Other file</a><a href="/login">Continue</a>
+        <a href="https://accounts.google.com/ServiceLogin">Download</a>
+        <a href="https://hubcloud.ist/drive/a">Mirror</a>
+        <a href="/download/a">Download now</a>''')
+    links,unknown=recovery_links(doc,base,r.providers['hubdrive'].allowed_hosts,resolver.provider_for)
+    assert links==['https://hubcloud.ist/drive/a','https://hubdrive.sbs/download/a']
+    assert unknown==[]
+
+
+@pytest.mark.asyncio
+async def test_failed_pages_not_refetched_within_provider_attempt(tmp_path):
+    r=Registry();r.load()
+    a,b,c,shared=['https://hubdrive.sbs/'+x for x in ('file/a','download/b','download/c','download/shared')]
+    end='https://hubcloud.ist/drive/end'
+    net=FakeNetwork({a:page(a,f'<a href="{b}">Download</a><a href="{c}">Download</a>'),
+        b:page(b,f'<a href="{shared}">Download</a>'),shared:page(shared,'No links'),
+        c:page(c,f'<a href="{shared}">Download</a><a href="{end}">Download</a>'),end:file(end)})
+    store=Store('sqlite:///'+str(tmp_path/'state.db'))
+    try:
+        result=await Resolver(r,net,store).resolve(variant(a),['hubdrive'],'test',7)
+        assert result.url==end and net.calls.count(shared)==1
+    finally:await store.close()
+
+
+@pytest.mark.asyncio
+async def test_hop_exhaustion_leaves_budget_for_other_provider(tmp_path):
+    r=Registry();r.load();r.providers['hubdrive'].max_hops=2
+    a,b,c=['https://hubdrive.sbs/download/'+x for x in 'abc']
+    hub='https://hubcloud.ist/drive/backup';end='https://video-downloads.googleusercontent.com/f'
+    net=FakeNetwork({a:page(a,f'<a href="{b}">Download</a>'),b:page(b,f'<a href="{c}">Download</a>'),
+        hub:page(hub,f'<a href="{end}">Download</a>'),end:file(end)})
+    store=Store('sqlite:///'+str(tmp_path/'state.db'))
+    try:
+        v=variant(a);v.links.append(Link(label='Backup',url=hub))
+        result=await Resolver(r,net,store).resolve(v,['hubdrive','hubcloud'],'test',7)
+        assert result.url==end and net.calls==[a,b,hub,end]
+    finally:await store.close()
+
+
+@pytest.mark.asyncio
+async def test_google_login_redirect_not_proposed_as_provider(tmp_path):
+    r=Registry();r.load();start='https://hubdrive.sbs/file/a'
+    class AuthRedirect(FakeNetwork):
+        async def fetch(self,*args,**kwargs):
+            raise FlowError('UNSUPPORTED','Unconfigured destination: accounts.google.com')
+    store=Store('sqlite:///'+str(tmp_path/'state.db'))
+    try:
+        with pytest.raises(FlowError):await Resolver(r,AuthRedirect({}),store).resolve(variant(start),['hubdrive'],'test',7)
+        assert await store.list('host_proposals',50)==[]
+        assert not any(x['code']=='HOST_APPROVAL_NEEDED' for x in await store.logs())
+    finally:await store.close()
+
+
+@pytest.mark.asyncio
+async def test_existing_google_login_proposal_cannot_be_approved(tmp_path):
+    from bot.app import BotApp
+    r=Registry();r.load();r.settings.owner_ids=[1]
+    store=Store('sqlite:///'+str(tmp_path/'state.db'));app=BotApp(r,store,FakeTelegram())
+    try:
+        ident=await save_host_proposal(store,'hubdrive','accounts.google.com','test')
+        await app.management(1,1,'/hostapprove',ident+' hubdrive')
+        assert await store.get('runtime','configuration') is None
+        assert 'Google sign-in' in app.tg.messages[-1][1]
+    finally:await app.close();await store.close()
+
 @pytest.mark.asyncio
 async def test_unknown_host_is_queued_without_request_and_not_cooldown(tmp_path):
     r=Registry();r.load();url='https://gamerxyt.com/a'

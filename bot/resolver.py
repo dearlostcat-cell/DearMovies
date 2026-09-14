@@ -11,7 +11,7 @@ from .config import Registry, Provider
 from .models import FlowError, Resolution, Variant, uid
 from .network import Browser, Network, Response, host_matches, reject_blocked, validate_url
 from .parser import soup
-from .recovery import recovery_links, route_identity, save_host_proposal
+from .recovery import recovery_links, route_identity, save_host_proposal, authentication_host, excluded_route
 
 
 def file_response(response: Response) -> Resolution | None:
@@ -93,7 +93,7 @@ class Resolver:
         failures.add(key)
         await self.store.log(ctx["job"], ctx["user"], "PROVIDER_FAILED", provider=provider.id, reason=error.code, message=error.message)
         match=re.fullmatch(r'Unconfigured destination: ([A-Za-z0-9.-]+)',error.message)
-        if match:
+        if match and not authentication_host(match[1]):
             ident=await save_host_proposal(self.store,provider.id,match[1],ctx['job'])
             await self.store.log(ctx['job'],ctx['user'],'HOST_APPROVAL_NEEDED',provider=provider.id,host=match[1],proposal=ident)
 
@@ -110,6 +110,10 @@ class Resolver:
                     await self.store.log(job, user, "PROVIDER_FAILED", host=urlsplit(link.url).hostname, reason="UNSUPPORTED")
                     continue
                 ctx["max_hops"] = provider.max_hops
+                # Budget each provider separately, with a job-wide ceiling as well.
+                if ctx.get('total_hops', 0) >= 64:break
+                ctx['hops'] = 0
+                ctx['failed_routes'] = set()
                 health = await self.store.get("provider_health", provider.id, {})
                 if health.get("cooldown_until", 0) > time.time():
                     remaining=max(1,int(health['cooldown_until']-time.time()))
@@ -159,7 +163,14 @@ class Resolver:
     async def walk(self, url, allowed, ctx):
         # Visited pages belong to this route, not failed sibling alternatives.
         previous=ctx['visited'].copy()
+        key = uid(route_identity(url))
+        failed = ctx.setdefault('failed_routes', set())
+        if key in failed:
+            raise FlowError('ROUTE_REVISITED', 'This page already failed in the current provider attempt')
         try:return await self._walk(url,allowed,ctx)
+        except FlowError:
+            failed.add(key)
+            raise
         finally:ctx['visited']=previous
 
     async def _walk(self, url, allowed, ctx):
@@ -170,9 +181,12 @@ class Resolver:
             url=urlunsplit((parsed.scheme,alias,parsed.path,parsed.query,parsed.fragment))
             allowed=list(set([*allowed,alias]))
         validate_url(url, allowed)
+        if excluded_route(url):raise FlowError('BLOCKED', 'Authentication route is not a download destination')
         identity = uid(route_identity(url))
         if identity in ctx["visited"]: raise FlowError("ROUTE_REVISITED", "This route loops back to an already attempted page")
         if ctx["hops"] >= ctx.get("max_hops", 16): raise FlowError("INVALID_RESPONSE", "Resolution hop limit reached")
+        if ctx.get('total_hops', 0) >= 64:raise FlowError('INVALID_RESPONSE', 'Resolution job limit reached')
+        ctx['total_hops'] = ctx.get('total_hops', 0) + 1
         ctx["visited"].add(identity); ctx["hops"] += 1
         provider = self.provider_for(url)
         allowed = list(set(allowed + (provider.allowed_hosts if provider else [])))
@@ -214,6 +228,8 @@ class Resolver:
                 fingerprint=uid("form",target,urlencode(data))
                 if fingerprint in ctx["visited"]:raise FlowError("ROUTE_REVISITED","Intermediate form repeated")
                 if ctx["hops"]>=ctx["max_hops"]:raise FlowError("INVALID_RESPONSE","Intermediate hop limit reached")
+                if ctx.get('total_hops',0)>=64:raise FlowError('INVALID_RESPONSE','Resolution job limit reached')
+                ctx['total_hops']=ctx.get('total_hops',0)+1
                 ctx["visited"].add(fingerprint);ctx["hops"]+=1
                 if form.get("method","GET").upper()!="POST":raise FlowError("UNSUPPORTED","Unexpected landing form method")
                 response=await self.network.fetch(ctx["session"],target,allowed,method="POST",data=data,max_bytes=500000)
@@ -235,7 +251,7 @@ class Resolver:
                 if match.lastindex: candidates.append(urljoin(response.url, html.unescape(match[1]).replace("\\/", "/")))
         recovered,unknown=recovery_links(doc,response.url,allowed,self.provider_for)
         additions=[x for x in recovered if x not in candidates]
-        candidates=list(dict.fromkeys(x for x in candidates+additions if route_identity(x)!=route_identity(response.url)))[:32]
+        candidates=list(dict.fromkeys(x for x in candidates+additions if not excluded_route(x) and route_identity(x)!=route_identity(response.url)))[:32]
         if additions:await self.store.log(ctx['job'],ctx['user'],'RECOVERY_LINKS_FOUND',provider=provider.id,count=len(additions))
         for host in unknown:
             ident=await save_host_proposal(self.store,provider.id,host,ctx['job'])

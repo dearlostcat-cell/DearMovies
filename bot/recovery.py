@@ -6,6 +6,18 @@ from .network import validate_url
 from .models import FlowError
 
 
+def authentication_host(host):
+    host = (host or '').lower().rstrip('.')
+    return host == 'accounts.google.com' or host.endswith('.accounts.google.com')
+
+
+def excluded_route(url):
+    parsed = urlsplit(url)
+    return authentication_host(parsed.hostname) or bool(re.search(
+        r'(?:^|/)(?:login|logout|signin|sign-in|signup|sign-up|register|account|accounts|oauth|wp-login\.php)(?:/|$)',
+        parsed.path, re.I))
+
+
 def route_identity(url):
     p=urlsplit(url)
     return urlunsplit((p.scheme.lower(),p.netloc.lower(),p.path,p.query,''))
@@ -16,7 +28,7 @@ def recovery_links(doc, base, allowed, provider_for):
     def add(raw, eligible=True):
         if not raw or not eligible:return
         target=urljoin(base,html.unescape(raw).replace('\\/','/'))
-        if route_identity(target)==route_identity(base):return
+        if excluded_route(target) or route_identity(target)==route_identity(base):return
         try:validate_url(target,allowed)
         except FlowError as error:
             if error.code=='UNSUPPORTED':
@@ -30,7 +42,12 @@ def recovery_links(doc, base, allowed, provider_for):
         if not target:continue
         resolved=urljoin(base,target)
         actionable=bool(re.search(r'download|resume|get[\s_-]*link|continue|generate',label,re.I))
-        add(target, actionable or provider_for(resolved) is not None)
+        if re.search(r'\b(?:log\s*in|sign\s*in|sign\s*up|register|logout|privacy|terms|contact|home)\b',label,re.I):continue
+        # A known host alone does not make its own navigation a download route.
+        origin_provider, target_provider = provider_for(base), provider_for(resolved)
+        different_provider = target_provider is not None and (
+            origin_provider is None or origin_provider.id != target_provider.id)
+        add(target, actionable or different_provider)
     for node in doc.select('meta[http-equiv]')[:10]:
         if node.get('http-equiv','').lower()=='refresh':
             match=re.search(r'url\s*=\s*["\x27]?([^"\x27]+)',node.get('content',''),re.I)

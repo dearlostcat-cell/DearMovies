@@ -71,6 +71,8 @@ class Administration:
                         provider=self.registry.providers.get(provider_id)
                         if not provider:raise ValueError('Choose the existing provider whose page format this host uses')
                         host=proposal['host']
+                        from .recovery import authentication_host
+                        if authentication_host(host):raise ValueError('Google sign-in is not a download provider; reject this proposal')
                         validate_url('https://'+host,[host])
                         dns=PublicResolver()
                         try:await dns.resolve(host,443)

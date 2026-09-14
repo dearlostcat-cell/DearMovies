@@ -1,4 +1,4 @@
-# Lost Movies — server edition 2.2.0
+# Lost Movies — server edition 2.2.1
 
 The supplied welcome video is now included. See DOCKER_IMAGE.md for building or downloading a Docker image through GitHub Actions. This supersedes references below to media being excluded.
 

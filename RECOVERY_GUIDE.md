@@ -1,4 +1,4 @@
-# Automatic recovery — 2.2.0
+# Automatic recovery — 2.2.1
 
 No AI service or API key required. This is the five-site server edition with Kuroiru and the welcome video, based on the local 2.1.1 source. Your separate clean v3 starter is unchanged. Later Replit-only edits were not supplied and are not included.
 
@@ -8,7 +8,7 @@ No AI service or API key required. This is the five-site server edition with Kur
 - Accepts redirects to explicitly registered provider hosts and selects the parser belonging to the landed provider.
 - Tries existing selectors first, then bounded fallback extraction: actionable download/resume links, data-href/data-url buttons, meta refresh and known literal URL assignments. Only configured destinations are followed. Page JavaScript is never evaluated by this extractor.
 - Reads a larger HTML response when the initial bounded range probe was truncated.
-- Tries supported alternate routes after failures, preserving file verification. Failed sibling routes no longer incorrectly mark a later route as a loop. A shared hop budget still limits work and fragment-only loops are rejected.
+- Tries supported alternate routes after failures, preserving file verification. Failed sibling routes no longer incorrectly mark a later route as a loop. Each top-level provider attempt has its configured hop budget. A separate 64-hop job ceiling limits total work. Failed pages are not retried within the same attempt; a new provider attempt can retry shared pages. Fragment-only loops are rejected.
 - Existing timeout retries remain bounded. Cooldown logs now report remaining seconds. Parser/configuration failures do not trigger provider-wide cooldown; repeated transient failures or blocks still can.
 - Failed extraction logs PAGE_DIAGNOSTIC with host, HTTP status, byte count and element counts. It does not store raw page HTML, signed links, cookies or credentials.
 
@@ -38,6 +38,6 @@ Use /providerreset only after applying a fix, then retry once. It clears the sto
 
 ## Verification
 
-78 automated tests passed, including new tests for registered redirects, changed buttons, host review permissions, private-address rejection, truncated HTML, fragment loops and fallback through a previously failed page. Network/provider tests use controlled responses; Telegram messages were not sent during testing.
+83 automated tests passed, including new tests for registered redirects, changed buttons, host review permissions, private-address rejection, truncated HTML, fragment loops and fallback through a previously failed page. Network/provider tests use controlled responses; Telegram messages were not sent during testing.
 
 Docker is not installed in the preparation environment. The Docker build and real host availability remain to be verified on your server or through the included GitHub Actions workflow. No repository was published and no server configuration was changed.
