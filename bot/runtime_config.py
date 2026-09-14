@@ -17,6 +17,12 @@ async def load_runtime(root, store, value=None):
             obj=cls.model_validate(raw)
             if ident!=obj.id: raise ValueError('Configuration ID mismatch')
             dest[ident]=obj
+    # Add this exact supported download host to persisted configurations too.
+    # A saved override must not hide the bundled v2.2.2 host correction.
+    for ident in ('generator', 'hubcloud'):
+        provider = registry.providers.get(ident)
+        if provider and 'pixel.hubcloud.ist' not in provider.allowed_hosts:
+            provider.allowed_hosts.append('pixel.hubcloud.ist')
     if any(p not in registry.providers for s in registry.sites.values() for p in s.providers):
         raise ValueError('Unknown provider in runtime configuration')
     registry.provider_aliases = value.get("provider_aliases",{})

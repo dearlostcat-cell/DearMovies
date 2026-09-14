@@ -213,6 +213,11 @@ class Resolver:
             landed=self.provider_for(response.url)
             if landed:provider=landed;allowed=list(set(allowed+landed.allowed_hosts))
         doc, candidates = soup(response.text), []
+        if provider.id == 'hubdrive' and any(
+            re.fullmatch(r'file\s+not\s+found\s*[!.]?', node.get_text(' ', strip=True), re.I)
+            for node in doc.select('h1,h2,h3,h4,h5,h6')
+        ):
+            raise FlowError('LINK_EXPIRED', 'HubDrive reports File not found; trying the next available mirror')
         if provider.id == 'vcloud':
             from .intermediates import vcloud_target
             target = vcloud_target(response.text)

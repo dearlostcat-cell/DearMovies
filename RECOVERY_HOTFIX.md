@@ -1,71 +1,66 @@
-# Recovery navigation hotfix — v2.2.1
+# Mirror recovery update — v2.2.2
 
-This update addresses the v2.2.0 recovery traversal bug seen in the supplied HubDrive log. It retains the existing five sites and Kuroiru.
+Includes the v2.2.1 navigation/loop corrections and the new HubDrive missing-file detection and pixel.hubcloud.ist host correction. Retains the five sites, Kuroiru, welcome video and existing deployment settings.
 
-## Changes
+## What changed
 
-- Known-provider navigation links no longer qualify solely because their domain is registered. Same-provider download/resume/continue buttons still qualify; links to a different registered provider still qualify.
-- Recovery ignores login/account routes and navigation labels. Configured candidates are also filtered for authentication destinations.
-- Google sign-in redirects no longer generate download-host approval proposals. The owner cannot approve an old accounts.google.com proposal through /hostapprove.
-- A failed page is not requested repeatedly through sibling branches of the same provider attempt. A new top-level provider attempt may retry shared destinations.
-- Each top-level provider receives its configured hop allowance; a 64-hop job ceiling remains. A failed HubDrive traversal therefore does not automatically exhaust HubCloud's allowance.
-- Actual login, verification and HTTP 403 failures remain failures. Hostname recognition is not proof that a file exists or that the server can access it.
+- Recognizes HubDrive's supplied HTTP-200 "File not found !" heading as LINK_EXPIRED. The existing mirror fallback then tries the next available link for the selected file.
+- Verifies with the supplied movie HTML that HubDrive /file/16254736976 and HubCloud /drive/q2dzkp2psnhfzff remain in the same Arrival variant. No file IDs or replacement URLs are hardcoded into the resolver.
+- Adds exactly pixel.hubcloud.ist to generator and HubCloud allowed destinations. Saved provider overrides receive the same addition on load. Other unknown hosts remain unapproved.
+- The route may go through Gamerxyt or directly to a configured file host. It does not require Gamerxyt to appear.
+- v2.2.1 protections remain: ignore navigation/authentication routes, bound work, avoid repeated failed pages within a provider attempt, and preserve budget for alternate providers.
 
-## Apply to your Git checkout
+86 automated tests passed. The supplied movie and missing-file HTML are used in regression tests (scripts/styles/iframes removed). Downstream successful responses are simulated, including paths with and without Gamerxyt. This does not establish that the live file is available or reachable from your server. Real login/403 blocks remain failures.
 
-The small hotfix ZIP contains only changed files relative to v2.2.0. The full release ZIP also contains the source, configuration and welcome video. Keep your existing .env and database.
+## GitHub update from PowerShell
 
-In PowerShell, start inside the correct Git checkout. First review `git status --short`; save any existing local changes. If your recovery-v2.2.0 pull request has already merged, switch to main and pull it before creating the new branch. Otherwise create the new branch from your existing recovery-v2.2.0 branch.
+Use your existing Git checkout containing v2.2.0 or v2.2.1. If the prior pull request has merged, first switch to main and pull. Save existing local changes before applying. This hotfix is cumulative relative to v2.2.0; review any newer custom edits before replacing files.
 
 ```powershell
-git switch -c recovery-v2.2.1
-if ($LASTEXITCODE -ne 0) { throw 'Could not create hotfix branch' }
-# Replace this path with the downloaded hotfix ZIP location if necessary.
-$hotfixZip = 'C:\Users\dearl\Documents\Codex\2026-09-11\lets-talk-about-what-is-possible\outputs\lost-movies-hotfix-v2.2.1.zip'
-Expand-Archive -LiteralPath $hotfixZip -DestinationPath (Get-Location).Path -Force
+$repoFolder = Read-Host 'Paste the full path of your DearMovies Git checkout'
+Set-Location -LiteralPath $repoFolder
+git status --short
+if ($LASTEXITCODE -ne 0) { throw 'This is not a Git checkout' }
+if (git status --porcelain) { throw 'Save existing local changes before applying the update' }
+git switch -c recovery-v2.2.2
+if ($LASTEXITCODE -ne 0) { throw 'Could not create the update branch' }
+$zipPath = 'C:\Users\dearl\Documents\Codex\2026-09-11\lets-talk-about-what-is-possible\outputs\lost-movies-hotfix-v2.2.2.zip'
+Expand-Archive -LiteralPath $zipPath -DestinationPath $repoFolder -Force
 git diff --stat
 git diff
 ```
 
-After reviewing the changes, commit and push the new branch, then create a pull request into main:
+After reviewing, in that same folder:
 
 ```powershell
-git add -- bot/__init__.py bot/recovery.py bot/resolver.py bot/runtime_config.py tests/test_recovery.py compose.yaml .github/workflows/image.yml README.md DOCKER_IMAGE.md RECOVERY_GUIDE.md RECOVERY_HOTFIX.md
+git add -- bot compose.yaml config/providers/generator.yaml config/providers/hubcloud.yaml tests .github/workflows/image.yml README.md DOCKER_IMAGE.md RECOVERY_GUIDE.md RECOVERY_HOTFIX.md
 git diff --cached --quiet
 if ($LASTEXITCODE -eq 1) {
-    git commit -m 'Fix recovery navigation loops and authentication proposals'
+    git commit -m 'Fix missing-file mirror fallback and HubCloud download host'
     if ($LASTEXITCODE -ne 0) { throw 'Commit failed' }
 } elseif ($LASTEXITCODE -ne 0) { throw 'Could not inspect staged changes' }
-git push -u origin recovery-v2.2.1
+git push -u origin recovery-v2.2.2
 if ($LASTEXITCODE -ne 0) { throw 'Push failed' }
 ```
 
-## Deploy and retry
+Create and merge the pull request to main on GitHub. This preparation has not pushed or deployed anything automatically.
 
-After merging, on the server in its existing checkout:
+## Server update
+
+In the existing server checkout after merging:
 
 ```sh
 git pull --ff-only
 docker compose up -d --build
 ```
 
-Include `--profile https` if using the bundled Caddy deployment. For a Python-only install, restart its existing service. Do not start a second process polling the same bot token.
+Include `--profile https` if using bundled Caddy. For Python-only hosting restart the existing service instead. Keep .env and database volumes. Do not start a second Telegram polling process with the same token.
 
-In the owner's private Telegram chat, dismiss the stale Google sign-in proposal:
-
-```
-/hostreject e28833549a19
-```
-
-If the providers are cooling down after the old failures, after deploying the fix clear those cooldowns once:
+If old failures left cooldowns, clear them once in the owner's private Telegram chat after deployment:
 
 ```
 /providerreset hubdrive
 /providerreset hubcloud
 ```
 
-Retry once. If it still reports BLOCKED, supply the new log and the relevant host page HTML. Do not approve Google Accounts as a download provider. This update does not fabricate a HubCloud URL if no matching file link is present.
-
-## Validation
-
-83 automated tests passed, including five new regression tests. Tests use controlled responses; the live failing URL was redacted, so this is not a claim that the specific file resolves successfully. No Telegram messages were sent. Docker was not built here, and no GitHub or server changes were performed by this packaging operation.
+Search again, select the version and retry. There is no need to approve pixel.hubcloud.ist manually. If both actual mirrors are unavailable, the bot must still report failure; it cannot recreate a deleted file. The Docker image was not built in the preparation environment.

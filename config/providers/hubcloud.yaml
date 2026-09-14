@@ -1,35 +1,43 @@
 id: hubcloud
-version: "1.0"
-hosts: [hubcloud.ist, hubcloud.cx, hubcloud.bz, hubcloud.foo, hubcloud.one, hubcloud.in, hubcloud.ink, hubcloud.fyi]
+version: '1.1'
+hosts:
+- hubcloud.ist
+- hubcloud.cx
+- hubcloud.bz
+- hubcloud.foo
+- hubcloud.one
+- hubcloud.in
+- hubcloud.ink
+- hubcloud.fyi
 allowed_hosts:
-  - hubcloud.ist
-  - hubcloud.cx
-  - hubcloud.bz
-  - hubcloud.foo
-  - hubcloud.one
-  - hubcloud.in
-  - hubcloud.ink
-  - hubcloud.fyi
-  - gamerxyt.com
-  - gpdl.hubcloud.cx
-  - gpdl.hubcloud.ist
-  - '*.googleusercontent.com'
-  - index.jiomedia.workers.dev
-  - gpdl.rohitkiskk.workers.dev
-  - storage.googleapis.com
+- hubcloud.ist
+- hubcloud.cx
+- hubcloud.bz
+- hubcloud.foo
+- hubcloud.one
+- hubcloud.in
+- hubcloud.ink
+- hubcloud.fyi
+- gamerxyt.com
+- gpdl.hubcloud.cx
+- gpdl.hubcloud.ist
+- '*.googleusercontent.com'
+- index.jiomedia.workers.dev
+- gpdl.rohitkiskk.workers.dev
+- storage.googleapis.com
+- pixel.hubcloud.ist
 mode: links
 request:
   timeout: 20
   retries: 1
   transport: http
 link_selectors:
-  - 'a#download[href]'
-  - 'a#downloadBtn[href]'
-  - 'a[href*="gpdl."]'
-  - 'a[href*="/re/testzip.php"]'
-  - 'a[href*="storage.googleapis.com/"]'
-  - 'a[href*="index.jiomedia.workers.dev/"]'
-  - 'a[href*="video-downloads.googleusercontent.com/"]'
-# Recognizes literal URL assignments only; never executes JavaScript.
+- a#download[href]
+- a#downloadBtn[href]
+- a[href*="gpdl."]
+- a[href*="/re/testzip.php"]
+- a[href*="storage.googleapis.com/"]
+- a[href*="index.jiomedia.workers.dev/"]
+- a[href*="video-downloads.googleusercontent.com/"]
 literal_url_patterns:
-  - '(?:var|let|const)\s+(?:url|downloadUrl|downloadLink)\s*=\s*["\x27](https?://[^"\x27]+)'
+- (?:var|let|const)\s+(?:url|downloadUrl|downloadLink)\s*=\s*["\x27](https?://[^"\x27]+)

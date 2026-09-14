@@ -1,4 +1,4 @@
-# Automatic recovery — 2.2.1
+# Automatic recovery — 2.2.2
 
 No AI service or API key required. This is the five-site server edition with Kuroiru and the welcome video, based on the local 2.1.1 source. Your separate clean v3 starter is unchanged. Later Replit-only edits were not supplied and are not included.
 
@@ -38,6 +38,6 @@ Use /providerreset only after applying a fix, then retry once. It clears the sto
 
 ## Verification
 
-83 automated tests passed, including new tests for registered redirects, changed buttons, host review permissions, private-address rejection, truncated HTML, fragment loops and fallback through a previously failed page. Network/provider tests use controlled responses; Telegram messages were not sent during testing.
+86 automated tests passed, including new tests for registered redirects, changed buttons, host review permissions, private-address rejection, truncated HTML, fragment loops and fallback through a previously failed page. Network/provider tests use controlled responses; Telegram messages were not sent during testing.
 
 Docker is not installed in the preparation environment. The Docker build and real host availability remain to be verified on your server or through the included GitHub Actions workflow. No repository was published and no server configuration was changed.
