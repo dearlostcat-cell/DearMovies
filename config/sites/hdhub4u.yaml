@@ -98,6 +98,7 @@ provider_hosts:
 - hubdrive.tips
 - hubcloud.ist
 - hubcloud.cx
+- hubdrive.sbs
 fixtures: {}
 normalization: {}
 extract: {}

@@ -1,0 +1,615 @@
+--- a/compose.yaml
++++ b/compose.yaml
+@@ -1,7 +1,7 @@
+ name: lost-movies
+ services:
+   bot:
+-    image: lost-movies:2.1.1
++    image: lost-movies:2.2.0
+     build:
+       context: .
+       args:
+--- a/DOCKER_IMAGE.md
++++ b/DOCKER_IMAGE.md
+@@ -1,4 +1,4 @@
+-# Docker image with welcome video — 2.1.1
++# Docker image with welcome video — 2.2.0
+ 
+ This source package includes your supplied assets/dear.mp4 (761,524 bytes). The Dockerfile copies it into /app/assets/dear.mp4. Compose mounts the included assets folder over that directory, so keep the video there when using Compose. The video is intentionally allowed into Git for this release; it will be visible if you publish a public repository.
+ 
+@@ -12,10 +12,10 @@
+ docker compose up -d --build
+ ```
+ 
+-This builds the tagged image `lost-movies:2.1.1`. To export it for another server:
++This builds the tagged image `lost-movies:2.2.0`. To export it for another server:
+ 
+ ```sh
+-docker save lost-movies:2.1.1 | gzip > lost-movies-2.1.1.tar.gz
++docker save lost-movies:2.2.0 | gzip > lost-movies-2.2.0.tar.gz
+ ```
+ 
+ ## Build on GitHub without local Docker
+@@ -26,7 +26,7 @@
+ 4. On a Linux amd64 Docker server, load it:
+ 
+ ```sh
+-docker load -i lost-movies-2.1.1-linux-amd64.tar.gz
++docker load -i lost-movies-2.2.0-linux-amd64.tar.gz
+ docker compose up -d --no-build
+ ```
+ 
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-# Lost Movies — server edition 2.1.1
++# Lost Movies — server edition 2.2.0
+ 
+ The supplied welcome video is now included. See DOCKER_IMAGE.md for building or downloading a Docker image through GitHub Actions. This supersedes references below to media being excluded.
+ 
+@@ -101,3 +101,7 @@
+ Set BROWSER_ENABLED=true and rebuild to include Chromium if your configured providers require it. Browser support is not a promise of access to a blocking host. It uses more memory and increases image size.
+ 
+ References: https://docs.docker.com/compose/how-tos/startup-order/ and https://caddyserver.com/docs/quick-starts/reverse-proxy
++
++## Automatic recovery update
++
++See RECOVERY_GUIDE.md for the changes, owner commands and upgrade limits.
+--- /dev/null
++++ b/RECOVERY_GUIDE.md
+@@ -0,0 +1,43 @@
++# Automatic recovery — 2.2.0
++
++No AI service or API key required. This is the five-site server edition with Kuroiru and the welcome video, based on the local 2.1.1 source. Your separate clean v3 starter is unchanged. Later Replit-only edits were not supplied and are not included.
++
++## What recovers automatically
++
++- Recognizes the configured hubdrive.sbs destination and follows a real HubCloud link found on the page. Paths and query parameters are retained; domains are not blindly swapped.
++- Accepts redirects to explicitly registered provider hosts and selects the parser belonging to the landed provider.
++- Tries existing selectors first, then bounded fallback extraction: actionable download/resume links, data-href/data-url buttons, meta refresh and known literal URL assignments. Only configured destinations are followed. Page JavaScript is never evaluated by this extractor.
++- Reads a larger HTML response when the initial bounded range probe was truncated.
++- Tries supported alternate routes after failures, preserving file verification. Failed sibling routes no longer incorrectly mark a later route as a loop. A shared hop budget still limits work and fragment-only loops are rejected.
++- Existing timeout retries remain bounded. Cooldown logs now report remaining seconds. Parser/configuration failures do not trigger provider-wide cooldown; repeated transient failures or blocks still can.
++- Failed extraction logs PAGE_DIAGNOSTIC with host, HTTP status, byte count and element counts. It does not store raw page HTML, signed links, cookies or credentials.
++
++## Owner review in Telegram
++
++Unfamiliar actionable link hosts and unknown redirect hosts are queued as proposals. They are not automatically visited or trusted. Inspect the domain independently before approval, including whether its page format matches the selected provider.
++
++```
++/hostproposals
++/hostapprove PROPOSAL_ID hubdrive
++/hostreject PROPOSAL_ID
++/providerreset hubdrive
++```
++
++These commands require the owner in a private chat. /hostapprove checks public DNS and saves the explicitly chosen provider mapping in the database. The next request still has to prove it can resolve a file. It does not automatically migrate paths or rewrite an old provider's HTML selectors. A completely new host format requires a new provider definition or parser. Existing jobs finish with their original configuration; new jobs use the approved configuration. Proposals expire after seven days. A rejected proposal can be suggested again if a later request encounters it.
++
++Use /providerreset only after applying a fix, then retry once. It clears the stored cooldown without pretending the host is healthy. Persistent 403 responses, logins, verification challenges and opaque JavaScript flows are not repaired automatically.
++
++## Upgrade
++
++1. Back up the running project and database. If your server has Replit edits newer than the local 2.1.1 release, review RECOVERY_CHANGES.patch and CHANGED_FILES.txt and merge rather than replacing blindly. The patch is relative to the local server edition, not to unknown server code.
++2. Keep existing .env and database volumes. The project name remains lost-movies so the normal Compose upgrade retains the same volumes. Do not deploy alongside another process polling the same token.
++3. Rebuild using `docker compose up -d --build` (include `--profile https` if using Caddy). Python-only installations must restart their service after replacing code.
++4. If old database provider overrides mask hubdrive.sbs, use the existing `/providerdomain hubdrive hubdrive.tips hubdrive.sbs` after independently verifying the host. That existing command explicitly remaps the old hostname; it should only be used when they share the same path scheme. Alternatively review a generated host proposal and approve it for hubdrive to add the hostname without rewriting old URLs.
++5. Clear pre-existing cooldowns once with `/providerreset hubdrive` and `/providerreset hubcloud`, then try one representative link.
++6. Verify status, search, quality selection and the final file from your actual server. A successful fixture test is not proof that a third-party host will permit the server's IP.
++
++## Verification
++
++78 automated tests passed, including new tests for registered redirects, changed buttons, host review permissions, private-address rejection, truncated HTML, fragment loops and fallback through a previously failed page. Network/provider tests use controlled responses; Telegram messages were not sent during testing.
++
++Docker is not installed in the preparation environment. The Docker build and real host availability remain to be verified on your server or through the included GitHub Actions workflow. No repository was published and no server configuration was changed.
+--- a/bot/app.py
++++ b/bot/app.py
+@@ -52,6 +52,10 @@
+ <b>Staff commands</b>
+ /allow ID | /revoke ID | /allowed
+ /domain SITE_ID URL | /domains | /domainrollback ID
++/hostproposals — Review unfamiliar download hosts (owner)
++/hostapprove PROPOSAL_ID PROVIDER_ID — Trust a reviewed host (owner)
++/hostreject PROPOSAL_ID — Dismiss a proposal (owner)
++/providerreset PROVIDER_ID — Clear cooldown after a fix (owner)
+ /providerdomain PROVIDER_ID OLD_HOST NEW_HOST
+ /admin add|remove ID — owner only
+ /sites — Site status, enable/disable and tests
+--- /dev/null
++++ b/bot/recovery.py
+@@ -0,0 +1,49 @@
++"""Bounded link recovery. No JavaScript evaluation or automatic host trust."""
++import html
++import re
++from urllib.parse import urljoin, urlsplit, urlunsplit
++from .network import validate_url
++from .models import FlowError
++
++
++def route_identity(url):
++    p=urlsplit(url)
++    return urlunsplit((p.scheme.lower(),p.netloc.lower(),p.path,p.query,''))
++
++
++def recovery_links(doc, base, allowed, provider_for):
++    candidates=[]; unknown=set()
++    def add(raw, eligible=True):
++        if not raw or not eligible:return
++        target=urljoin(base,html.unescape(raw).replace('\\/','/'))
++        if route_identity(target)==route_identity(base):return
++        try:validate_url(target,allowed)
++        except FlowError as error:
++            if error.code=='UNSUPPORTED':
++                host=urlsplit(target).hostname
++                if host and re.fullmatch(r'[A-Za-z0-9.-]{1,253}',host):unknown.add(host.lower())
++            return
++        if target not in candidates and len(candidates)<16:candidates.append(target)
++    for node in doc.select('a[href], [data-href], [data-url], [data-download]')[:250]:
++        label=node.get_text(' ',strip=True)+' '+str(node.get('id',''))+' '+str(node.get('class',''))
++        target=node.get('href') or node.get('data-href') or node.get('data-url') or node.get('data-download')
++        if not target:continue
++        resolved=urljoin(base,target)
++        actionable=bool(re.search(r'download|resume|get[\s_-]*link|continue|generate',label,re.I))
++        add(target, actionable or provider_for(resolved) is not None)
++    for node in doc.select('meta[http-equiv]')[:10]:
++        if node.get('http-equiv','').lower()=='refresh':
++            match=re.search(r'url\s*=\s*["\x27]?([^"\x27]+)',node.get('content',''),re.I)
++            if match:add(match[1].strip())
++    # Literal assignments only; never run arbitrary page code or decode opaque tokens.
++    for node in doc.select('script:not([src])')[:40]:
++        for m in re.finditer(r'(?:downloadUrl|downloadLink|download_url|location\.href|location)\s*=\s*["\x27]([^"\x27]+)',node.get_text()[:100000]):add(m[1])
++    return candidates,sorted(unknown)[:8]
++
++
++async def save_host_proposal(store, provider, host, job):
++    # Domains only: no signed URL, cookies or page contents in proposals.
++    from .models import uid
++    ident=uid(provider,host)[:12]
++    await store.put('host_proposals',ident,{'provider':provider,'host':host,'job':job},7*86400)
++    return ident
+--- a/bot/resolver.py
++++ b/bot/resolver.py
+@@ -11,6 +11,7 @@
+ from .models import FlowError, Resolution, Variant, uid
+ from .network import Browser, Network, Response, host_matches, reject_blocked, validate_url
+ from .parser import soup
++from .recovery import recovery_links, route_identity, save_host_proposal
+ 
+ 
+ def file_response(response: Response) -> Resolution | None:
+@@ -52,7 +53,7 @@
+         # A blocked mirror must not prevent trying a different supported host.
+         # Keep the original block if every alternative fails.
+         return error.code in provider.fallback_on or (
+-            error.code == "BLOCKED" and provider.id in {"nexdrive", "fastdl", "vcloud"}
++            error.code == "BLOCKED" and provider.id in {"nexdrive", "fastdl", "vcloud", "hubdrive", "hubcloud", "generator"}
+         )
+ 
+     def __init__(self, registry: Registry, network: Network, store):
+@@ -91,6 +92,10 @@
+             return
+         failures.add(key)
+         await self.store.log(ctx["job"], ctx["user"], "PROVIDER_FAILED", provider=provider.id, reason=error.code, message=error.message)
++        match=re.fullmatch(r'Unconfigured destination: ([A-Za-z0-9.-]+)',error.message)
++        if match:
++            ident=await save_host_proposal(self.store,provider.id,match[1],ctx['job'])
++            await self.store.log(ctx['job'],ctx['user'],'HOST_APPROVAL_NEEDED',provider=provider.id,host=match[1],proposal=ident)
+ 
+     async def resolve(self, variant: Variant, priority: list[str], job: str, user: int):
+         if self.registry.settings.mock_mode or self.registry.settings.dry_run:
+@@ -107,8 +112,9 @@
+                 ctx["max_hops"] = provider.max_hops
+                 health = await self.store.get("provider_health", provider.id, {})
+                 if health.get("cooldown_until", 0) > time.time():
+-                    last = FlowError("UNAVAILABLE", f"Provider {provider.id} is temporarily cooling down after failures")
+-                    await self.store.log(job, user, "PROVIDER_COOLDOWN", provider=provider.id)
++                    remaining=max(1,int(health['cooldown_until']-time.time()))
++                    last = self.prefer_error(last,FlowError("UNAVAILABLE", f"Provider {provider.id} is cooling down; retry in {remaining} seconds"))
++                    await self.store.log(job, user, "PROVIDER_COOLDOWN", provider=provider.id, retry_after_seconds=remaining)
+                     continue
+                 started = time.monotonic()
+                 await self.store.log(job, user, "PROVIDER_ATTEMPT", provider=provider.id, url=link.url)
+@@ -118,7 +124,7 @@
+                     await self.store.log(job, user, "PROVIDER_SUCCESS", provider=provider.id, result=result.model_dump(exclude={"url"}))
+                     return result
+                 except FlowError as e:
+-                    if e.code != "ROUTE_REVISITED": await self.record_health(provider.id, False, time.monotonic() - started)
++                    if e.code in {'TIMEOUT','UNAVAILABLE','BLOCKED'}: await self.record_health(provider.id, False, time.monotonic() - started)
+                     if e.code != "ROUTE_REVISITED": last = self.prefer_error(last, e)
+                     await self.log_provider_failure(ctx, provider, e)
+                     if not self.can_fallback(provider, e): raise
+@@ -151,6 +157,12 @@
+                 await asyncio.sleep(min(2 ** attempt, 4))
+ 
+     async def walk(self, url, allowed, ctx):
++        # Visited pages belong to this route, not failed sibling alternatives.
++        previous=ctx['visited'].copy()
++        try:return await self._walk(url,allowed,ctx)
++        finally:ctx['visited']=previous
++
++    async def _walk(self, url, allowed, ctx):
+         from urllib.parse import urlunsplit
+         parsed=urlsplit(url)
+         alias=getattr(self.registry,"provider_aliases",{}).get(parsed.hostname)
+@@ -158,21 +170,34 @@
+             url=urlunsplit((parsed.scheme,alias,parsed.path,parsed.query,parsed.fragment))
+             allowed=list(set([*allowed,alias]))
+         validate_url(url, allowed)
+-        identity = uid(url)
++        identity = uid(route_identity(url))
+         if identity in ctx["visited"]: raise FlowError("ROUTE_REVISITED", "This route loops back to an already attempted page")
+         if ctx["hops"] >= ctx.get("max_hops", 16): raise FlowError("INVALID_RESPONSE", "Resolution hop limit reached")
+         ctx["visited"].add(identity); ctx["hops"] += 1
+         provider = self.provider_for(url)
+         allowed = list(set(allowed + (provider.allowed_hosts if provider else [])))
++        # Registered provider destinations are explicit trust, not arbitrary redirects.
++        allowed=list(set(allowed+[host for p in self.registry.providers.values() for host in p.hosts]))
+         await self.store.log(ctx["job"], ctx["user"], "RESOLUTION_STEP", provider=provider.id if provider else "direct", hop=ctx["hops"], url=url)
+         if provider and provider.mode == "steps": return await self.run_steps(url, provider, allowed, ctx)
+         response = await self.fetch(url, provider, allowed, ctx)
+         result = file_response(response)
+         if result: return validate_expected(result, ctx.get("variant"))
++        landed_identity=uid(route_identity(response.url))
++        if landed_identity!=identity:
++            if landed_identity in ctx['visited']:raise FlowError('ROUTE_REVISITED','Redirect returned to an earlier page')
++            ctx['visited'].add(landed_identity)
+         # A redirect can change which provider owns the HTML response.
+         landed = self.provider_for(response.url)
+         if landed: provider = landed; allowed = list(set(allowed + landed.allowed_hosts))
+         if not provider: raise FlowError("UNSUPPORTED", f"HTML page at an unconfigured provider: {urlsplit(response.url).hostname}")
++        if response.truncated:
++            response=await self.network.fetch(ctx['session'],response.url,allowed,timeout=provider.request.timeout,headers=provider.request.headers,max_bytes=1_000_000,range_probe=False)
++            reject_blocked(response)
++            result=file_response(response)
++            if result:return validate_expected(result,ctx.get('variant'))
++            landed=self.provider_for(response.url)
++            if landed:provider=landed;allowed=list(set(allowed+landed.allowed_hosts))
+         doc, candidates = soup(response.text), []
+         if provider.id == 'vcloud':
+             from .intermediates import vcloud_target
+@@ -208,8 +233,15 @@
+         for pattern in provider.literal_url_patterns:
+             for match in re.finditer(pattern, response.text):
+                 if match.lastindex: candidates.append(urljoin(response.url, html.unescape(match[1]).replace("\\/", "/")))
+-        candidates = list(dict.fromkeys(x for x in candidates if x != response.url))
++        recovered,unknown=recovery_links(doc,response.url,allowed,self.provider_for)
++        additions=[x for x in recovered if x not in candidates]
++        candidates=list(dict.fromkeys(x for x in candidates+additions if route_identity(x)!=route_identity(response.url)))[:32]
++        if additions:await self.store.log(ctx['job'],ctx['user'],'RECOVERY_LINKS_FOUND',provider=provider.id,count=len(additions))
++        for host in unknown:
++            ident=await save_host_proposal(self.store,provider.id,host,ctx['job'])
++            await self.store.log(ctx['job'],ctx['user'],'HOST_APPROVAL_NEEDED',provider=provider.id,host=host,proposal=ident)
+         if not candidates:
++            await self.store.log(ctx['job'],ctx['user'],'PAGE_DIAGNOSTIC',provider=provider.id,host=urlsplit(response.url).hostname,status=response.status,bytes=len(response.body),truncated=response.truncated,anchors=len(doc.select('a[href]')),scripts=len(doc.select('script')),forms=len(doc.select('form')),configured_selectors=len(provider.link_selectors))
+             raise FlowError("UNSUPPORTED", f"No configured next link at {urlsplit(response.url).hostname}; owner can inspect this provider")
+         last = None
+         for target in candidates:
+--- a/bot/runtime_config.py
++++ b/bot/runtime_config.py
+@@ -41,13 +41,56 @@
+         self.catalog=Catalog(candidate,self.network,self.store);self.resolver=Resolver(candidate,self.network,self.store)
+ 
+     async def management(self,user,chat,cmd,arg):
+-        commands={'/allow','/revoke','/allowed','/admin','/domain','/domains','/domainrollback','/providerdomain'}
++        commands={'/allow','/revoke','/allowed','/admin','/domain','/domains','/domainrollback','/providerdomain','/hostproposals','/hostapprove','/hostreject','/providerreset'}
+         if cmd not in commands:return False
+         if chat!=user or not await self.staff(user):
+             await self.tg.text(chat,'This command is available to staff in a private chat.');return True
+         try:
+             async with self.management_lock:
+-                if cmd in {'/allow','/revoke'}:
++                if cmd in {'/hostproposals','/hostapprove','/hostreject','/providerreset'}:
++                    if not self.owner(user):raise ValueError('Only owners can approve hosts or reset provider cooldowns')
++                    if cmd=='/hostproposals':
++                        rows=await self.store.list('host_proposals',50)
++                        await self.tg.text(chat,'\n'.join(f'{ident}: {escape(p["host"])} (seen from {escape(p["provider"])})' for ident,p in rows) or 'No pending host proposals.')
++                    elif cmd=='/hostreject':
++                        await self.store.remove('host_proposals',arg)
++                        await self.tg.text(chat,'Proposal dismissed. No host permissions changed.')
++                    elif cmd=='/providerreset':
++                        if arg not in self.registry.providers:raise ValueError('Unknown provider ID')
++                        async with self.resolver.health_lock:
++                            state=await self.store.get('provider_health',arg,{})
++                            if state:
++                                state.update(consecutive=0,cooldown_until=0)
++                                await self.store.put('provider_health',arg,state)
++                        await self.store.log('ADMIN',user,'PROVIDER_RESET',provider=arg)
++                        await self.tg.text(chat,'Cooldown cleared. This does not fix a blocked host; retry once.')
++                    else:
++                        ident,provider_id=arg.split()
++                        proposal=await self.store.get('host_proposals',ident)
++                        if not proposal:raise ValueError('Proposal expired or not found')
++                        provider=self.registry.providers.get(provider_id)
++                        if not provider:raise ValueError('Choose the existing provider whose page format this host uses')
++                        host=proposal['host']
++                        validate_url('https://'+host,[host])
++                        dns=PublicResolver()
++                        try:await dns.resolve(host,443)
++                        finally:await dns.close()
++                        value=copy.deepcopy(await self.store.get('runtime','configuration',{}))
++                        raw=provider.model_dump()
++                        raw['hosts']=list(dict.fromkeys([*raw['hosts'],host]))
++                        raw['allowed_hosts']=list(dict.fromkeys([*raw['allowed_hosts'],host]))
++                        value.setdefault('providers',{})[provider_id]=raw
++                        for site in self.registry.sites.values():
++                            if provider_id in site.providers:
++                                raw_site=site.model_dump();raw_site['provider_hosts']=list(dict.fromkeys([*raw_site['provider_hosts'],host]))
++                                value.setdefault('sites',{})[site.id]=raw_site
++                        candidate=await load_runtime(self.registry.root,self.store,value)
++                        await self.store.put('runtime','configuration',value)
++                        await self.install_registry(candidate)
++                        await self.store.remove('host_proposals',ident)
++                        await self.store.log('ADMIN',user,'HOST_APPROVED',provider=provider_id,host=host)
++                        await self.tg.text(chat,'Host approved for the selected provider. Retry to test it; file resolution is not yet verified.')
++                elif cmd in {'/allow','/revoke'}:
+                     target=int(arg)
+                     if target<=0:raise ValueError('Use a positive personal Telegram user ID')
+                     if await self.staff(target):raise ValueError('Staff access is managed through roles')
+--- a/bot/__init__.py
++++ b/bot/__init__.py
+@@ -1 +1 @@
+-__version__ = "2.1.1"
++__version__ = "2.2.0"
+--- /dev/null
++++ b/tests/test_recovery.py
+@@ -0,0 +1,126 @@
++import pytest
++from bot.config import Registry,Provider
++from bot.models import FlowError,Variant,Link
++from bot.network import Response,validate_url
++from bot.resolver import Resolver
++from bot.storage import Store
++from bot.recovery import recovery_links,save_host_proposal
++from bot.parser import soup
++from test_core import FakeNetwork,FakeTelegram
++
++def page(url,body,truncated=False):return Response(url,200,{'content-type':'text/html'},body.encode(),truncated)
++def file(url):return Response(url,206,{'content-type':'video/mp4'},b'\0\0\0\x18ftypisom')
++def variant(url):return Variant(id='v',filename='test.mp4',links=[Link(label='Get',url=url)])
++
++@pytest.mark.asyncio
++async def test_hubdrive_redirect_then_hubcloud_generator_new_button(tmp_path):
++    r=Registry();r.load()
++    start='https://hubdrive.tips/file/a';landed='https://hubdrive.sbs/file/a'
++    hub='https://hubcloud.ist/drive/a';gen='https://gamerxyt.com/new';end='https://video-downloads.googleusercontent.com/file'
++    class RedirectNetwork(FakeNetwork):
++        async def fetch(self,session,url,allowed,**kwargs):
++            response=await super().fetch(session,url,allowed,**kwargs)
++            validate_url(response.url,allowed)
++            return response
++    net=RedirectNetwork({start:page(landed,f'<a data-url="{hub}">Continue</a>'),hub:page(hub,f'<a href="{gen}" id="download">Generate</a>'),gen:page(gen,f'<a href="{end}" class="new-design">Download now</a>'),end:file(end)})
++    store=Store('sqlite:///'+str(tmp_path/'state.db'))
++    try:
++        result=await Resolver(r,net,store).resolve(variant(start),['hubdrive'],'test',7)
++        assert result.url==end and net.calls==[start,hub,gen,end]
++        assert any(x['code']=='RECOVERY_LINKS_FOUND' for x in await store.logs())
++    finally:await store.close()
++
++def test_recovery_ignores_ads_and_private_destinations():
++    doc=soup('<a href="https://ads.example/x">Ad</a><a href="http://127.0.0.1/x">Download</a><a href="https://new.example/x?token=secret">Download now</a><a href="https://cdn.example/f">Download</a>')
++    links,unknown=recovery_links(doc,'https://host.example/a',['host.example','cdn.example'],lambda _:None)
++    assert links==['https://cdn.example/f'] and unknown==['new.example']
++
++@pytest.mark.asyncio
++async def test_unknown_host_is_queued_without_request_and_not_cooldown(tmp_path):
++    r=Registry();r.load();url='https://gamerxyt.com/a'
++    net=FakeNetwork({url:page(url,'<a href="https://new.example/file?token=secret">Download</a>')})
++    store=Store('sqlite:///'+str(tmp_path/'state.db'));resolver=Resolver(r,net,store)
++    try:
++        for _ in range(6):
++            with pytest.raises(FlowError,match='No configured next link'):await resolver.resolve(variant(url),['generator'],'test',7)
++        assert set(net.calls)=={url}
++        proposals=await store.list('host_proposals',50)
++        assert len(proposals)==1 and proposals[0][1]['host']=='new.example'
++        assert 'secret' not in str(proposals) and await store.get('provider_health','generator',{})=={}
++    finally:await store.close()
++
++@pytest.mark.asyncio
++async def test_fragment_loop_terminates_without_refetch(tmp_path):
++    r=Registry();r.load();a='https://gamerxyt.com/a';b='https://gamerxyt.com/b'
++    net=FakeNetwork({a:page(a,f'<a id="download" href="{b}">Next</a>'),b:page(b,f'<a id="download" href="{a}#again">Next</a>')})
++    store=Store('sqlite:///'+str(tmp_path/'state.db'))
++    try:
++        with pytest.raises(FlowError):await Resolver(r,net,store).resolve(variant(a),['generator'],'test',7)
++        assert net.calls==[a,b]
++    finally:await store.close()
++
++@pytest.mark.asyncio
++async def test_truncated_html_retried_without_range(tmp_path):
++    r=Registry();r.load();start='https://gamerxyt.com/a';end='https://video-downloads.googleusercontent.com/f'
++    class FullPage(FakeNetwork):
++        async def fetch(self,session,url,allowed,**kw):
++            self.calls.append((url,kw.get('range_probe')))
++            if url==end:return file(end)
++            if kw.get('range_probe'):return page(url,'<html>',True)
++            return page(url,f'<a href="{end}">Download now</a>')
++    net=FullPage({});store=Store('sqlite:///'+str(tmp_path/'state.db'))
++    try:
++        result=await Resolver(r,net,store).resolve(variant(start),['generator'],'test',7)
++        assert result.url==end and net.calls[:2]==[(start,True),(start,False)]
++    finally:await store.close()
++
++@pytest.mark.asyncio
++async def test_owner_approval_persists_and_staff_cannot_approve(tmp_path,monkeypatch):
++    from bot.app import BotApp
++    from bot.runtime_config import load_runtime
++    import bot.runtime_config as runtime
++    class DNS:
++        async def resolve(self,*args):return []
++        async def close(self):pass
++    monkeypatch.setattr(runtime,'PublicResolver',DNS)
++    r=Registry();r.load();r.settings.owner_ids=[1]
++    store=Store('sqlite:///'+str(tmp_path/'state.db'));tg=FakeTelegram();app=BotApp(r,store,tg)
++    try:
++        ident=await save_host_proposal(store,'generator','new.example','job')
++        await store.put('admins',2,True)
++        await app.management(2,2,'/hostapprove',ident+' hubdrive')
++        assert await store.get('runtime','configuration') is None
++        await app.management(1,1,'/hostapprove',ident+' hubdrive')
++        loaded=await load_runtime(r.root,store)
++        assert 'new.example' in loaded.providers['hubdrive'].hosts
++        assert await store.get('host_proposals',ident) is None
++    finally:await app.close();await store.close()
++
++@pytest.mark.asyncio
++async def test_failed_mirror_does_not_poison_sibling_route(tmp_path):
++    r=Registry();r.load();a='https://gamerxyt.com/a';b='https://hubdrive.sbs/file/b';shared='https://gamerxyt.com/shared';end='https://video-downloads.googleusercontent.com/f'
++    class RetryRoute(FakeNetwork):
++        async def fetch(self,session,url,*args,**kw):
++            self.calls.append(url)
++            if url==shared:
++                return page(url,'<html>No link</html>' if self.calls.count(url)==1 else f'<a href="{end}">Download</a>')
++            return self.pages[url]
++    net=RetryRoute({a:page(a,f'<a id="download" href="{shared}">Next</a>'),b:page(b,f'<a href="{shared}">Continue</a>'),end:file(end)})
++    store=Store('sqlite:///'+str(tmp_path/'state.db'))
++    try:
++        v=variant(a);v.links.append(Link(label='Backup',url=b))
++        result=await Resolver(r,net,store).resolve(v,['generator','hubdrive'],'test',7)
++        assert result.url==end and net.calls.count(shared)==2
++    finally:await store.close()
++
++@pytest.mark.asyncio
++async def test_private_host_approval_rejected(tmp_path):
++    from bot.app import BotApp
++    r=Registry();r.load();r.settings.owner_ids=[1]
++    store=Store('sqlite:///'+str(tmp_path/'state.db'));app=BotApp(r,store,FakeTelegram())
++    try:
++        ident=await save_host_proposal(store,'hubdrive','127.0.0.1','test')
++        await app.management(1,1,'/hostapprove',ident+' hubdrive')
++        assert await store.get('runtime','configuration') is None
++        assert 'Change rejected' in app.tg.messages[-1][1]
++    finally:await app.close();await store.close()
+--- a/.github/workflows/image.yml
++++ b/.github/workflows/image.yml
+@@ -9,11 +9,11 @@
+     steps:
+       - uses: actions/checkout@v4
+       - name: Build Linux amd64 image with welcome video
+-        run: docker build -t lost-movies:2.1.1 .
++        run: docker build -t lost-movies:2.2.0 .
+       - name: Check bundled video and web startup without Telegram
+         run: |
+-          docker run --rm --entrypoint python lost-movies:2.1.1 -c "from pathlib import Path; assert Path('/app/assets/dear.mp4').stat().st_size > 0"
+-          docker run -d --name smoke -p 127.0.0.1:8080:8080 lost-movies:2.1.1
++          docker run --rm --entrypoint python lost-movies:2.2.0 -c "from pathlib import Path; assert Path('/app/assets/dear.mp4').stat().st_size > 0"
++          docker run -d --name smoke -p 127.0.0.1:8080:8080 lost-movies:2.2.0
+           trap 'docker logs smoke; docker rm -f smoke' EXIT
+           for i in $(seq 1 30); do
+             if curl -fsS http://127.0.0.1:8080/health; then break; fi
+@@ -21,9 +21,9 @@
+           done
+           curl -fsS http://127.0.0.1:8080/health
+       - name: Export image
+-        run: docker save lost-movies:2.1.1 | gzip > lost-movies-2.1.1-linux-amd64.tar.gz
++        run: docker save lost-movies:2.2.0 | gzip > lost-movies-2.2.0-linux-amd64.tar.gz
+       - uses: actions/upload-artifact@v4
+         with:
+           name: lost-movies-docker-image-linux-amd64
+-          path: lost-movies-2.1.1-linux-amd64.tar.gz
++          path: lost-movies-2.2.0-linux-amd64.tar.gz
+           retention-days: 7
+--- a/config/providers/hubdrive.yaml
++++ b/config/providers/hubdrive.yaml
+@@ -1,7 +1,7 @@
+ id: hubdrive
+-version: "1.0"
+-hosts: [hubdrive.tips, hubdrive.me]
+-allowed_hosts: [hubdrive.tips, hubdrive.me, hubcloud.ist, hubcloud.cx, hubcloud.bz, hubcloud.foo, hubcloud.one, hubcloud.in, hubcloud.ink, hubcloud.fyi]
++version: "1.2"
++hosts: [hubdrive.tips, hubdrive.me, hubdrive.sbs]
++allowed_hosts: [hubdrive.tips, hubdrive.me, hubdrive.sbs, hubcloud.ist, hubcloud.cx, hubcloud.bz, hubcloud.foo, hubcloud.one, hubcloud.in, hubcloud.ink, hubcloud.fyi]
+ mode: links
+ link_selectors:
+   - 'a[href*="hubcloud."]'
+--- a/config/sites/4khdhub.yaml
++++ b/config/sites/4khdhub.yaml
+@@ -1,6 +1,6 @@
+ id: 4khdhub
+ name: 4KHDHub
+-version: "1.0"
++version: '1.0'
+ parser: html_catalog
+ enabled: true
+ priority: 10
+@@ -22,33 +22,51 @@
+   parameter: s
+   container: main .latest-releases
+   card: a.movie-card
+-  title: [.movie-card-title]
+-  poster: [img]
+-  metadata: [.movie-card-meta]
+-  tags: [.movie-card-formats, .quality-badges]
+-  empty: [.no-results, .no-results-found, .empty-state]
+-  next_page: [a.next.page-numbers, 'a[rel="next"]']
++  title:
++  - .movie-card-title
++  poster:
++  - img
++  metadata:
++  - .movie-card-meta
++  tags:
++  - .movie-card-formats
++  - .quality-badges
++  empty:
++  - .no-results
++  - .no-results-found
++  - .empty-state
++  next_page:
++  - a.next.page-numbers
++  - a[rel="next"]
+   max_pages: 3
+ selectors:
+-  title: [h1.page-title]
+-  poster: [.poster-image img]
+-  description: [.detail-description]
+-  tagline: [.movie-tagline]
++  title:
++  - h1.page-title
++  poster:
++  - .poster-image img
++  description:
++  - .detail-description
++  tagline:
++  - .movie-tagline
+   movie_root: .content-main
+   pack_root: '#complete-pack'
+   episodes_root: '#episodes'
+-providers: [hubcloud, hubdrive, generator]
++providers:
++- hubcloud
++- hubdrive
++- generator
+ provider_hosts:
+-  - hubcloud.ist
+-  - hubcloud.cx
+-  - hubcloud.bz
+-  - hubcloud.foo
+-  - hubcloud.one
+-  - hubcloud.in
+-  - hubcloud.ink
+-  - hubcloud.fyi
+-  - hubdrive.tips
+-  - hubdrive.me
++- hubcloud.ist
++- hubcloud.cx
++- hubcloud.bz
++- hubcloud.foo
++- hubcloud.one
++- hubcloud.in
++- hubcloud.ink
++- hubcloud.fyi
++- hubdrive.tips
++- hubdrive.me
++- hubdrive.sbs
+ fixtures:
+   search: tests/fixtures/search.html
+   movie: tests/fixtures/movie.html
+--- a/config/sites/hdhub4u.yaml
++++ b/config/sites/hdhub4u.yaml
+@@ -98,6 +98,7 @@
+ - hubdrive.tips
+ - hubcloud.ist
+ - hubcloud.cx
++- hubdrive.sbs
+ fixtures: {}
+ normalization: {}
+ extract: {}

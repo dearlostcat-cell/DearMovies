@@ -41,13 +41,56 @@ class Administration:
         self.catalog=Catalog(candidate,self.network,self.store);self.resolver=Resolver(candidate,self.network,self.store)
 
     async def management(self,user,chat,cmd,arg):
-        commands={'/allow','/revoke','/allowed','/admin','/domain','/domains','/domainrollback','/providerdomain'}
+        commands={'/allow','/revoke','/allowed','/admin','/domain','/domains','/domainrollback','/providerdomain','/hostproposals','/hostapprove','/hostreject','/providerreset'}
         if cmd not in commands:return False
         if chat!=user or not await self.staff(user):
             await self.tg.text(chat,'This command is available to staff in a private chat.');return True
         try:
             async with self.management_lock:
-                if cmd in {'/allow','/revoke'}:
+                if cmd in {'/hostproposals','/hostapprove','/hostreject','/providerreset'}:
+                    if not self.owner(user):raise ValueError('Only owners can approve hosts or reset provider cooldowns')
+                    if cmd=='/hostproposals':
+                        rows=await self.store.list('host_proposals',50)
+                        await self.tg.text(chat,'\n'.join(f'{ident}: {escape(p["host"])} (seen from {escape(p["provider"])})' for ident,p in rows) or 'No pending host proposals.')
+                    elif cmd=='/hostreject':
+                        await self.store.remove('host_proposals',arg)
+                        await self.tg.text(chat,'Proposal dismissed. No host permissions changed.')
+                    elif cmd=='/providerreset':
+                        if arg not in self.registry.providers:raise ValueError('Unknown provider ID')
+                        async with self.resolver.health_lock:
+                            state=await self.store.get('provider_health',arg,{})
+                            if state:
+                                state.update(consecutive=0,cooldown_until=0)
+                                await self.store.put('provider_health',arg,state)
+                        await self.store.log('ADMIN',user,'PROVIDER_RESET',provider=arg)
+                        await self.tg.text(chat,'Cooldown cleared. This does not fix a blocked host; retry once.')
+                    else:
+                        ident,provider_id=arg.split()
+                        proposal=await self.store.get('host_proposals',ident)
+                        if not proposal:raise ValueError('Proposal expired or not found')
+                        provider=self.registry.providers.get(provider_id)
+                        if not provider:raise ValueError('Choose the existing provider whose page format this host uses')
+                        host=proposal['host']
+                        validate_url('https://'+host,[host])
+                        dns=PublicResolver()
+                        try:await dns.resolve(host,443)
+                        finally:await dns.close()
+                        value=copy.deepcopy(await self.store.get('runtime','configuration',{}))
+                        raw=provider.model_dump()
+                        raw['hosts']=list(dict.fromkeys([*raw['hosts'],host]))
+                        raw['allowed_hosts']=list(dict.fromkeys([*raw['allowed_hosts'],host]))
+                        value.setdefault('providers',{})[provider_id]=raw
+                        for site in self.registry.sites.values():
+                            if provider_id in site.providers:
+                                raw_site=site.model_dump();raw_site['provider_hosts']=list(dict.fromkeys([*raw_site['provider_hosts'],host]))
+                                value.setdefault('sites',{})[site.id]=raw_site
+                        candidate=await load_runtime(self.registry.root,self.store,value)
+                        await self.store.put('runtime','configuration',value)
+                        await self.install_registry(candidate)
+                        await self.store.remove('host_proposals',ident)
+                        await self.store.log('ADMIN',user,'HOST_APPROVED',provider=provider_id,host=host)
+                        await self.tg.text(chat,'Host approved for the selected provider. Retry to test it; file resolution is not yet verified.')
+                elif cmd in {'/allow','/revoke'}:
                     target=int(arg)
                     if target<=0:raise ValueError('Use a positive personal Telegram user ID')
                     if await self.staff(target):raise ValueError('Staff access is managed through roles')

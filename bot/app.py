@@ -52,6 +52,10 @@ ADMIN_HELP = """
 <b>Staff commands</b>
 /allow ID | /revoke ID | /allowed
 /domain SITE_ID URL | /domains | /domainrollback ID
+/hostproposals — Review unfamiliar download hosts (owner)
+/hostapprove PROPOSAL_ID PROVIDER_ID — Trust a reviewed host (owner)
+/hostreject PROPOSAL_ID — Dismiss a proposal (owner)
+/providerreset PROVIDER_ID — Clear cooldown after a fix (owner)
 /providerdomain PROVIDER_ID OLD_HOST NEW_HOST
 /admin add|remove ID — owner only
 /sites — Site status, enable/disable and tests
