@@ -11,6 +11,7 @@ from .config import Registry, Provider
 from .models import FlowError, Resolution, Variant, uid
 from .network import Browser, Network, Response, host_matches, reject_blocked, validate_url
 from .parser import soup
+from .recovery import recovery_links, route_identity, save_host_proposal
 
 
 def file_response(response: Response) -> Resolution | None:
@@ -52,7 +53,7 @@ class Resolver:
         # A blocked mirror must not prevent trying a different supported host.
         # Keep the original block if every alternative fails.
         return error.code in provider.fallback_on or (
-            error.code == "BLOCKED" and provider.id in {"nexdrive", "fastdl", "vcloud"}
+            error.code == "BLOCKED" and provider.id in {"nexdrive", "fastdl", "vcloud", "hubdrive", "hubcloud", "generator"}
         )
 
     def __init__(self, registry: Registry, network: Network, store):
@@ -91,6 +92,10 @@ class Resolver:
             return
         failures.add(key)
         await self.store.log(ctx["job"], ctx["user"], "PROVIDER_FAILED", provider=provider.id, reason=error.code, message=error.message)
+        match=re.fullmatch(r'Unconfigured destination: ([A-Za-z0-9.-]+)',error.message)
+        if match:
+            ident=await save_host_proposal(self.store,provider.id,match[1],ctx['job'])
+            await self.store.log(ctx['job'],ctx['user'],'HOST_APPROVAL_NEEDED',provider=provider.id,host=match[1],proposal=ident)
 
     async def resolve(self, variant: Variant, priority: list[str], job: str, user: int):
         if self.registry.settings.mock_mode or self.registry.settings.dry_run:
@@ -107,8 +112,9 @@ class Resolver:
                 ctx["max_hops"] = provider.max_hops
                 health = await self.store.get("provider_health", provider.id, {})
                 if health.get("cooldown_until", 0) > time.time():
-                    last = FlowError("UNAVAILABLE", f"Provider {provider.id} is temporarily cooling down after failures")
-                    await self.store.log(job, user, "PROVIDER_COOLDOWN", provider=provider.id)
+                    remaining=max(1,int(health['cooldown_until']-time.time()))
+                    last = self.prefer_error(last,FlowError("UNAVAILABLE", f"Provider {provider.id} is cooling down; retry in {remaining} seconds"))
+                    await self.store.log(job, user, "PROVIDER_COOLDOWN", provider=provider.id, retry_after_seconds=remaining)
                     continue
                 started = time.monotonic()
                 await self.store.log(job, user, "PROVIDER_ATTEMPT", provider=provider.id, url=link.url)
@@ -118,7 +124,7 @@ class Resolver:
                     await self.store.log(job, user, "PROVIDER_SUCCESS", provider=provider.id, result=result.model_dump(exclude={"url"}))
                     return result
                 except FlowError as e:
-                    if e.code != "ROUTE_REVISITED": await self.record_health(provider.id, False, time.monotonic() - started)
+                    if e.code in {'TIMEOUT','UNAVAILABLE','BLOCKED'}: await self.record_health(provider.id, False, time.monotonic() - started)
                     if e.code != "ROUTE_REVISITED": last = self.prefer_error(last, e)
                     await self.log_provider_failure(ctx, provider, e)
                     if not self.can_fallback(provider, e): raise
@@ -151,6 +157,12 @@ class Resolver:
                 await asyncio.sleep(min(2 ** attempt, 4))
 
     async def walk(self, url, allowed, ctx):
+        # Visited pages belong to this route, not failed sibling alternatives.
+        previous=ctx['visited'].copy()
+        try:return await self._walk(url,allowed,ctx)
+        finally:ctx['visited']=previous
+
+    async def _walk(self, url, allowed, ctx):
         from urllib.parse import urlunsplit
         parsed=urlsplit(url)
         alias=getattr(self.registry,"provider_aliases",{}).get(parsed.hostname)
@@ -158,21 +170,34 @@ class Resolver:
             url=urlunsplit((parsed.scheme,alias,parsed.path,parsed.query,parsed.fragment))
             allowed=list(set([*allowed,alias]))
         validate_url(url, allowed)
-        identity = uid(url)
+        identity = uid(route_identity(url))
         if identity in ctx["visited"]: raise FlowError("ROUTE_REVISITED", "This route loops back to an already attempted page")
         if ctx["hops"] >= ctx.get("max_hops", 16): raise FlowError("INVALID_RESPONSE", "Resolution hop limit reached")
         ctx["visited"].add(identity); ctx["hops"] += 1
         provider = self.provider_for(url)
         allowed = list(set(allowed + (provider.allowed_hosts if provider else [])))
+        # Registered provider destinations are explicit trust, not arbitrary redirects.
+        allowed=list(set(allowed+[host for p in self.registry.providers.values() for host in p.hosts]))
         await self.store.log(ctx["job"], ctx["user"], "RESOLUTION_STEP", provider=provider.id if provider else "direct", hop=ctx["hops"], url=url)
         if provider and provider.mode == "steps": return await self.run_steps(url, provider, allowed, ctx)
         response = await self.fetch(url, provider, allowed, ctx)
         result = file_response(response)
         if result: return validate_expected(result, ctx.get("variant"))
+        landed_identity=uid(route_identity(response.url))
+        if landed_identity!=identity:
+            if landed_identity in ctx['visited']:raise FlowError('ROUTE_REVISITED','Redirect returned to an earlier page')
+            ctx['visited'].add(landed_identity)
         # A redirect can change which provider owns the HTML response.
         landed = self.provider_for(response.url)
         if landed: provider = landed; allowed = list(set(allowed + landed.allowed_hosts))
         if not provider: raise FlowError("UNSUPPORTED", f"HTML page at an unconfigured provider: {urlsplit(response.url).hostname}")
+        if response.truncated:
+            response=await self.network.fetch(ctx['session'],response.url,allowed,timeout=provider.request.timeout,headers=provider.request.headers,max_bytes=1_000_000,range_probe=False)
+            reject_blocked(response)
+            result=file_response(response)
+            if result:return validate_expected(result,ctx.get('variant'))
+            landed=self.provider_for(response.url)
+            if landed:provider=landed;allowed=list(set(allowed+landed.allowed_hosts))
         doc, candidates = soup(response.text), []
         if provider.id == 'vcloud':
             from .intermediates import vcloud_target
@@ -208,8 +233,15 @@ class Resolver:
         for pattern in provider.literal_url_patterns:
             for match in re.finditer(pattern, response.text):
                 if match.lastindex: candidates.append(urljoin(response.url, html.unescape(match[1]).replace("\\/", "/")))
-        candidates = list(dict.fromkeys(x for x in candidates if x != response.url))
+        recovered,unknown=recovery_links(doc,response.url,allowed,self.provider_for)
+        additions=[x for x in recovered if x not in candidates]
+        candidates=list(dict.fromkeys(x for x in candidates+additions if route_identity(x)!=route_identity(response.url)))[:32]
+        if additions:await self.store.log(ctx['job'],ctx['user'],'RECOVERY_LINKS_FOUND',provider=provider.id,count=len(additions))
+        for host in unknown:
+            ident=await save_host_proposal(self.store,provider.id,host,ctx['job'])
+            await self.store.log(ctx['job'],ctx['user'],'HOST_APPROVAL_NEEDED',provider=provider.id,host=host,proposal=ident)
         if not candidates:
+            await self.store.log(ctx['job'],ctx['user'],'PAGE_DIAGNOSTIC',provider=provider.id,host=urlsplit(response.url).hostname,status=response.status,bytes=len(response.body),truncated=response.truncated,anchors=len(doc.select('a[href]')),scripts=len(doc.select('script')),forms=len(doc.select('form')),configured_selectors=len(provider.link_selectors))
             raise FlowError("UNSUPPORTED", f"No configured next link at {urlsplit(response.url).hostname}; owner can inspect this provider")
         last = None
         for target in candidates:

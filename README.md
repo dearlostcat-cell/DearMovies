@@ -1,4 +1,4 @@
-# Lost Movies — server edition 2.1.1
+# Lost Movies — server edition 2.2.0
 
 The supplied welcome video is now included. See DOCKER_IMAGE.md for building or downloading a Docker image through GitHub Actions. This supersedes references below to media being excluded.
 
@@ -101,3 +101,7 @@ Run `python -m pytest -q` after installing requirements.txt and requirements-dev
 Set BROWSER_ENABLED=true and rebuild to include Chromium if your configured providers require it. Browser support is not a promise of access to a blocking host. It uses more memory and increases image size.
 
 References: https://docs.docker.com/compose/how-tos/startup-order/ and https://caddyserver.com/docs/quick-starts/reverse-proxy
+
+## Automatic recovery update
+
+See RECOVERY_GUIDE.md for the changes, owner commands and upgrade limits.
