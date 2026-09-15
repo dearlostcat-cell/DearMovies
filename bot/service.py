@@ -42,15 +42,16 @@ class Catalog:
     async def health(self, site_id):
         return await self.store.get("health", site_id, {"success": 0, "failed": 0, "consecutive": 0, "latency": 0, "cooldown_until": 0})
 
-    async def record_health(self, site_id, ok, latency):
+    async def record_health(self, site_id, ok, latency, error_code=None):
         async with self.health_lock:
             state = await self.health(site_id)
             state["success" if ok else "failed"] += 1
-            state["consecutive"] = 0 if ok else state["consecutive"] + 1
+            transient = error_code in {None, 'BLOCKED', 'TIMEOUT', 'UNAVAILABLE'}
+            state["consecutive"] = 0 if ok else state["consecutive"] + int(transient)
             state["last_success" if ok else "last_failure"] = time.time()
             state["latency"] = round(latency, 3) if not state["latency"] else round(state["latency"] * .8 + latency * .2, 3)
             if ok: state["cooldown_until"] = 0
-            elif state["consecutive"] >= self.registry.settings.cooldown_failures:
+            elif transient and state["consecutive"] >= self.registry.settings.cooldown_failures:
                 state["cooldown_until"] = time.time() + self.registry.settings.cooldown_seconds
             await self.store.put("health", site_id, state)
 
@@ -103,8 +104,9 @@ class Catalog:
                     await self.record_health(site.id,True,time.monotonic()-start)
                     await self.store.put("cache",key,[x.model_dump() for x in all_results],settings.search_ttl)
                     return all_results
-                except FlowError:
-                    await self.record_health(site.id,False,time.monotonic()-start)
+                except FlowError as error:
+                    await self.record_health(site.id,False,time.monotonic()-start,error.code)
+                    await self.store.log(job,user,'SITE_FAILED',site=site.id,stage='search',reason=error.code,message=error.message)
                     raise
             for base in [site.base_url, *site.mirrors]:
                 url = urljoin(base, site.search.path)
@@ -137,7 +139,7 @@ class Catalog:
                     last_error = e
                     await self.store.log(job, user, "SITE_FAILED", site=site.id, reason=e.code, message=e.message)
                     if e.code == "BLOCKED": break
-            await self.record_health(site.id, False, time.monotonic() - start)
+            await self.record_health(site.id, False, time.monotonic() - start, last_error.code if last_error else 'UNAVAILABLE')
             raise last_error or FlowError("UNAVAILABLE", "Site unavailable")
         return await self.shared.get(key, load)
 
@@ -253,8 +255,8 @@ class Catalog:
                     await self.store.put("inspect", job, redact(media.model_dump()), 86400)
                     await self.store.log(job, user, "DETAIL_SUCCESS", site=site.id, variants=len(media.variants), config=site.version)
                     return media
-                except FlowError:
-                    await self.record_health(site.id, False, time.monotonic() - begin)
+                except FlowError as error:
+                    await self.record_health(site.id, False, time.monotonic() - begin, error.code)
                     raise
             try:
                 media = (await self.shared.get(key, load)).model_copy(deep=True)
@@ -262,7 +264,7 @@ class Catalog:
                 return media
             except FlowError as e:
                 last = e
-                await self.store.log(job, user, "SITE_FAILED", site=site.id, reason=e.code)
+                await self.store.log(job, user, "SITE_FAILED", site=site.id, stage='details', title=result.title, reason=e.code, message=e.message)
                 if e.code == "BLOCKED" or not site.features.get("fallback", True): raise
                 await self.store.log(job, user, "SITE_FALLBACK", site=site.id)
         raise last or FlowError("UNAVAILABLE", "No source is currently available for this title")

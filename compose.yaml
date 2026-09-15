@@ -1,7 +1,7 @@
 name: lost-movies
 services:
   bot:
-    image: lost-movies:2.2.2
+    image: lost-movies:2.2.3
     build:
       context: .
       args:

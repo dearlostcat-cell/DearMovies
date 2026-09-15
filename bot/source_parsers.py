@@ -71,6 +71,21 @@ def article_media(html, url, site, result):
         if re.search(r'watch|player',label,re.I): continue
         if site.parser=='wordpress' and 'maxbutton' not in node.get('class',[]): continue
         if site.parser=='hdhub' and not downloads: continue
+        # Episode indexes can expose one link per episode before any quality menu.
+        index_episode = re.fullmatch(r'(?:EPISODE|EP)\s*(\d+)', label, re.I)
+        special = re.fullmatch(r'BONUS\s+(?:EP(?:ISODE)?\s*\d+|CLIP\s+OF\s+EP\s*\d+)', label, re.I)
+        if site.parser == 'hdhub' and (index_episode or special):
+            number = int(index_episode[1]) if index_episode else None
+            filename = f'{media.title} — {label}'
+            ident = uid(site.id, season, label.casefold())
+            existing = next((v for v in variants if v.id == ident), None)
+            if existing:
+                if target not in [x.url for x in existing.links]: existing.links.append(Link(label=label,url=target))
+            else:
+                variants.append(Variant(id=ident, filename=filename, website=site.id,
+                    season=season, episode=number, episode_label=label, mode='episode',
+                    links=[Link(label=label,url=target)]))
+            continue
         local=heading_text(node)
         context = local if re.search(r'\b(?:480|720|1080|2160)p|\b4K\b',local,re.I) else current
         if not context: continue

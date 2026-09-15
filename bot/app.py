@@ -503,12 +503,16 @@ class BotApp(Administration):
             await self.show_sites(chat)
         elif action == "test" and value in self.registry.sites:
             job = secrets.token_hex(4).upper()
-            await self.tg.text(chat, "Testing configured search…")
+            await self.tg.text(chat, f"Testing {escape(self.registry.sites[value].name)} configured search…")
             try:
                 async with asyncio.timeout(self.registry.settings.max_job_seconds):
                     items = await self.catalog.search_one(self.registry.sites[value], "dear", job, user)
                 await self.tg.text(chat, f"Search parser: {len(items)} titles.\nJob: <code>{job}</code>")
-            except Exception as e: await self.tg.text(chat, "Test failed: " + escape(e.message if isinstance(e, FlowError) else type(e).__name__))
+            except Exception as e:
+                reason = e.code if isinstance(e,FlowError) else 'INTERNAL_ERROR'
+                message = e.message if isinstance(e,FlowError) else type(e).__name__
+                await self.store.log(job,user,'SITE_FAILED',site=value,stage='test',reason=reason,message=message)
+                await self.tg.text(chat, f"{escape(self.registry.sites[value].name)} test failed: {escape(message)}\nJob: <code>{job}</code>")
         elif action == "inspect": await self.admin_command(user, chat, "/inspect", value)
         elif action == "retry":
             mapping = await self.store.get("job_session", value)
