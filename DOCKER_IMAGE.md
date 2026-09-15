@@ -1,4 +1,4 @@
-# Docker image with welcome video — 2.2.3
+# Docker image with welcome video — 2.2.4
 
 This source package includes your supplied assets/dear.mp4 (761,524 bytes). The Dockerfile copies it into /app/assets/dear.mp4. Compose mounts the included assets folder over that directory, so keep the video there when using Compose. The video is intentionally allowed into Git for this release; it will be visible if you publish a public repository.
 
@@ -12,10 +12,10 @@ Follow README.md to configure .env, then:
 docker compose up -d --build
 ```
 
-This builds the tagged image `lost-movies:2.2.3`. To export it for another server:
+This builds the tagged image `lost-movies:2.2.4`. To export it for another server:
 
 ```sh
-docker save lost-movies:2.2.3 | gzip > lost-movies-2.2.3.tar.gz
+docker save lost-movies:2.2.4 | gzip > lost-movies-2.2.4.tar.gz
 ```
 
 ## Build on GitHub without local Docker
@@ -26,7 +26,7 @@ docker save lost-movies:2.2.3 | gzip > lost-movies-2.2.3.tar.gz
 4. On a Linux amd64 Docker server, load it:
 
 ```sh
-docker load -i lost-movies-2.2.3-linux-amd64.tar.gz
+docker load -i lost-movies-2.2.4-linux-amd64.tar.gz
 docker compose up -d --no-build
 ```
 

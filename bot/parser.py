@@ -56,7 +56,7 @@ def parse_search(html: str, url: str, site: Site):
     results = []
     for card in cards:
         title = transform(first(card, site.search.title), "title", site)
-        anchor = card.select_one(site.search.link) if site.search.link else card
+        anchor = card if card.name == 'a' else card.select_one(site.search.link) if site.search.link else card
         href = anchor.get("href", "") if anchor else ""
         if not title or not href: raise FlowError("PARSER_CHANGED", "Search card is missing a title or link")
         href = urljoin(url, href)

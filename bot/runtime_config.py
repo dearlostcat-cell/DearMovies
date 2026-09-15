@@ -15,6 +15,13 @@ async def load_runtime(root, store, value=None):
         for ident, raw in value.get(key,{}).items():
             if key == 'sites' and ident in REMOVED_SITE_IDS: continue
             obj=cls.model_validate(raw)
+            # Migrate only the obsolete bundled GokuHD API layout, retaining
+            # owner domains, timeouts and other independent settings.
+            if key == 'sites' and ident == 'gokuhd' and obj.search_api == '/search.php':
+                bundled = dest.get(ident)
+                if bundled and not bundled.search_api:
+                    obj.search_api = bundled.search_api
+                    obj.search = bundled.search.model_copy(deep=True)
             if ident!=obj.id: raise ValueError('Configuration ID mismatch')
             dest[ident]=obj
     # Add this exact supported download host to persisted configurations too.

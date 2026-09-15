@@ -506,7 +506,7 @@ class BotApp(Administration):
             await self.tg.text(chat, f"Testing {escape(self.registry.sites[value].name)} configured search…")
             try:
                 async with asyncio.timeout(self.registry.settings.max_job_seconds):
-                    items = await self.catalog.search_one(self.registry.sites[value], "dear", job, user)
+                    items = await self.catalog.search_one(self.registry.sites[value], "dear", job, user, force_refresh=True)
                 await self.tg.text(chat, f"Search parser: {len(items)} titles.\nJob: <code>{job}</code>")
             except Exception as e:
                 reason = e.code if isinstance(e,FlowError) else 'INTERNAL_ERROR'

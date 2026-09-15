@@ -1,11 +1,13 @@
-CATALOG_FIX_INSTALL.md
 compose.yaml
 DOCKER_IMAGE.md
 README.md
+SEARCH_FIX_INSTALL.md
 bot/app.py
+bot/parser.py
+bot/runtime_config.py
 bot/service.py
-bot/source_parsers.py
 bot/__init__.py
-tests/test_catalog_repairs.py
+tests/test_search_refresh.py
 .github/workflows/image.yml
-tests/fixtures/hdhub_episode_index.html
+config/sites/gokuhd.yaml
+tests/fixtures/goku_home_cards.html

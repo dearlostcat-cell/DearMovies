@@ -86,10 +86,10 @@ class Catalog:
         if response.truncated: raise FlowError("INVALID_RESPONSE", "Catalogue page exceeds the configured response-size budget")
         return response.text, response.url
 
-    async def search_one(self, site, query, job, user):
+    async def search_one(self, site, query, job, user, force_refresh=False):
         settings = self.registry.settings
         key = uid("search", site.id, site.version, site.model_dump_json(), query.casefold(), settings.mock_mode)
-        cached = await self.store.get("cache", key) if site.features.get("search_cache", True) else None
+        cached = await self.store.get("cache", key) if site.features.get("search_cache", True) and not force_refresh else None
         if cached is not None:
             await self.store.log(job, user, "CACHE_HIT", site=site.id, stage="search")
             return [SearchResult.model_validate(x) for x in cached]
@@ -141,7 +141,7 @@ class Catalog:
                     if e.code == "BLOCKED": break
             await self.record_health(site.id, False, time.monotonic() - start, last_error.code if last_error else 'UNAVAILABLE')
             raise last_error or FlowError("UNAVAILABLE", "Site unavailable")
-        return await self.shared.get(key, load)
+        return await self.shared.get(key + (':fresh' if force_refresh else ''), load)
 
     async def search(self, text, job, user):
         query, filters = split_query(text)
