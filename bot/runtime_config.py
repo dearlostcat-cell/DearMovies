@@ -159,9 +159,8 @@ class Administration:
                         candidate.base_url=target.rstrip('/')
                         candidate.mirrors=list(dict.fromkeys([site.base_url,*site.mirrors]))
                         candidate.version=str(int(__import__('time').time_ns()))
-                        from .service import Catalog
-                        probe=Catalog(self.registry,self.network,self.store)
-                        await probe.search_one(candidate,'dear','DOMAIN_TEST',user)
+                        # Saving configuration must not depend on host availability.
+                        # URL and public DNS validation above still apply.
                         value.setdefault('sites',{})[ident]=candidate.model_dump()
                     else:
                         ident,oldhost,newhost=arg.split()
@@ -189,7 +188,10 @@ class Administration:
                     await self.store.put('runtime_history',history_key,{'before':old,'after':value})
                     await self.store.put('runtime','configuration',value)
                     await self.install_registry(candidate)
-                    await self.tg.text(chat,'Domain configuration activated and saved. Existing jobs retain their original configuration. Provider changes need a representative file test.')
+                    if cmd == '/domain':
+                        await self.tg.text(chat,'Domain saved and activated. Website access is not tested. Use /sites and its Test button to check access; HTTP 403 means the host rejected the request, not that saving failed. Existing jobs retain their original configuration.')
+                    else:
+                        await self.tg.text(chat,'Domain configuration activated and saved. Existing jobs retain their original configuration. Provider changes need a representative file test.')
                 await self.store.log('ADMIN',user,'ADMIN_CHANGE',command=cmd,target=arg)
         except (ValueError,FlowError) as e:
             await self.tg.text(chat,'Change rejected: '+escape(e.message if isinstance(e,FlowError) else str(e))[:2000])
