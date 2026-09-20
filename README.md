@@ -1,4 +1,6 @@
-# Lost Movies — server edition 2.2.4
+# Lost Movies — server edition 2.3.0
+
+See [SITE_DIAGNOSTICS.md](SITE_DIAGNOSTICS.md) for the new automatic site checks, per-test logs, and upgrade steps.
 
 The supplied welcome video is now included. See DOCKER_IMAGE.md for building or downloading a Docker image through GitHub Actions. This supersedes references below to media being excluded.
 

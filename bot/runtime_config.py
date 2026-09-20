@@ -17,13 +17,15 @@ async def load_runtime(root, store, value=None):
             obj=cls.model_validate(raw)
             # Migrate only the obsolete bundled GokuHD API layout, retaining
             # owner domains, timeouts and other independent settings.
-            if key == 'sites' and ident == 'gokuhd' and obj.search_api == '/search.php':
+            if key == 'sites' and ident == 'gokuhd' and obj.search_api in {'', '/search.php'}:
                 bundled = dest.get(ident)
-                if bundled and not bundled.search_api:
+                if bundled and bundled.search_api:
                     obj.search_api = bundled.search_api
-                    obj.search = bundled.search.model_copy(deep=True)
             if ident!=obj.id: raise ValueError('Configuration ID mismatch')
             dest[ident]=obj
+    site = registry.sites.get('hdhub4u')
+    if site and 'https://new6.hdhub4u.cl' not in site.mirrors:
+        site.mirrors.append('https://new6.hdhub4u.cl')
     # Add this exact supported download host to persisted configurations too.
     # A saved override must not hide the bundled v2.2.2 host correction.
     for ident in ('generator', 'hubcloud'):

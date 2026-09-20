@@ -9,7 +9,8 @@ image_base: https://static.kuroiru.co
 enabled: true
 priority: 10
 base_url: https://new5.hdhub4u.cl
-mirrors: []
+mirrors:
+- https://new6.hdhub4u.cl
 capabilities:
   movies: true
   series: true

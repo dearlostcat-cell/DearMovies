@@ -16,6 +16,7 @@ from .navigation import details_text, matching, rows, selection
 from .network import Network
 from .resolver import Resolver
 from .service import Catalog
+from .site_tests import SiteTests, test_buttons
 
 
 WELCOME = """нєу Luv
@@ -58,7 +59,8 @@ ADMIN_HELP = """
 /providerreset PROVIDER_ID — Clear cooldown after a fix (owner)
 /providerdomain PROVIDER_ID OLD_HOST NEW_HOST
 /admin add|remove ID — owner only
-/sites — Site status, enable/disable and tests
+/sites [query] — Run fresh search checks on enabled sites
+/sites status — Show status without testing
 /reload — Validate and reload all YAML
 /maintenance on|off
 /stats — Operational statistics
@@ -76,7 +78,7 @@ def button(label, data): return {"text": label, "callback_data": data}
 
 from .runtime_config import Administration, load_runtime
 
-class BotApp(Administration):
+class BotApp(Administration, SiteTests):
     def __init__(self, registry: Registry, store, telegram):
         self.registry, self.store, self.tg = registry, store, telegram
         self.network = Network(registry.settings.requests_concurrency)
@@ -94,6 +96,7 @@ class BotApp(Administration):
         self.last_poll = 0
         self.username = ""
         self.management_lock = asyncio.Lock()
+        self.init_site_tests()
 
     def owner(self, user): return user in self.registry.settings.owner_ids
 
@@ -483,16 +486,22 @@ class BotApp(Administration):
         else: await self.tg.text(chat, "Use /help to see available commands.")
 
     async def show_sites(self, chat):
-        lines, keyboard = ["<b>Websites</b>"], []
+        lines, keyboard = ["<b>Websites</b>\nCatalogue health; download availability is separate."], []
         for site in self.registry.sites.values():
             enabled = await self.catalog.enabled(site); health = await self.catalog.health(site.id)
             state = "Disabled" if not enabled else "Cooldown" if health["cooldown_until"] > time.time() else "Degraded" if health["consecutive"] else "Ready" if health["success"] else "Not yet checked"
             lines.append(f"{escape(site.name)} — {state} • {health['success']} successful / {health['failed']} failed")
             keyboard.append([button("Disable" if enabled else "Enable", f"admin:toggle:{site.id}"), button("Test " + site.name, f"admin:test:{site.id}")])
+            job = await self.store.get('site_test_latest', site.id+':search')
+            if job:
+                record = await self.store.get('site_tests', job, {})
+                lines.append(f"Last search test: {escape(record.get('status', 'expired'))} — {job}")
+                keyboard.append([button(site.name+' test logs', 'admin:sitelogs:'+job)])
         if self.registry.errors: lines.append("Configuration errors: " + escape(str(self.registry.errors))[:1000])
         await self.tg.text(chat, "\n".join(lines), keyboard)
 
     async def admin_callback(self, user, chat, data):
+        if chat != user or not await self.staff(user): return
         _, action, value = data.split(":", 2)
         if action == "toggle" and value in self.registry.sites:
             site = self.registry.sites[value]
@@ -502,17 +511,9 @@ class BotApp(Administration):
                 await self.tg.text(chat, "This site is disabled in YAML. Set enabled: true and /reload first.")
             await self.show_sites(chat)
         elif action == "test" and value in self.registry.sites:
-            job = secrets.token_hex(4).upper()
-            await self.tg.text(chat, f"Testing {escape(self.registry.sites[value].name)} configured search…")
-            try:
-                async with asyncio.timeout(self.registry.settings.max_job_seconds):
-                    items = await self.catalog.search_one(self.registry.sites[value], "dear", job, user, force_refresh=True)
-                await self.tg.text(chat, f"Search parser: {len(items)} titles.\nJob: <code>{job}</code>")
-            except Exception as e:
-                reason = e.code if isinstance(e,FlowError) else 'INTERNAL_ERROR'
-                message = e.message if isinstance(e,FlowError) else type(e).__name__
-                await self.store.log(job,user,'SITE_FAILED',site=value,stage='test',reason=reason,message=message)
-                await self.tg.text(chat, f"{escape(self.registry.sites[value].name)} test failed: {escape(message)}\nJob: <code>{job}</code>")
+            await self.start_site_test(user, chat, value)
+        elif action in {'sitelogs', 'siteretry', 'sitedetails'}:
+            await self.site_test_callback(user, chat, action, value)
         elif action == "inspect": await self.admin_command(user, chat, "/inspect", value)
         elif action == "retry":
             mapping = await self.store.get("job_session", value)
@@ -527,7 +528,11 @@ class BotApp(Administration):
             await self.start_job(s, **s["retry"])
 
     async def admin_command(self, user, chat, cmd, arg):
-        if cmd == "/sites": await self.show_sites(chat)
+        if cmd == "/sites":
+            if arg != 'status':
+                for site in self.registry.sites.values():
+                    await self.start_site_test(user, chat, site.id, query=arg or 'dear', quiet=True)
+            await self.show_sites(chat)
         elif cmd == "/reload":
             try:
                 candidate = await load_runtime(self.registry.root,self.store)
@@ -603,13 +608,15 @@ class BotApp(Administration):
         lines = []
         for event in reversed(events):
             stamp = time.strftime("%H:%M:%S UTC", time.gmtime(event["timestamp"]))
-            lines.append(f"{stamp} {event['job']} {event['code']}\n{event['site'] or event['provider']} {event['payload'][:220]}")
+            lines.append(f"{stamp} {event['job']} {event['code']}\n{event['site'] or event['provider']} {event['payload']}")
         keyboard = []
         if filters.get("job"):
             job = filters["job"]
             keyboard = [[button("View Parser", "admin:inspect:" + job), button("Retry Job", "admin:retry:" + job)]]
+            record = await self.store.get('site_tests', job)
+            if record: keyboard = test_buttons(job, record['stage'] == 'search' and bool(record.get('sample')))
         text = "\n\n".join(lines) or "No matching events."
-        if len(text) > 3000:
+        if len(escape(text)) > 3000:
             await self.tg.call("sendDocument", chat_id=chat, upload=("document", "diagnostics.txt", text.encode(), "text/plain"))
             text = "Diagnostic events attached."
         await self.tg.text(chat, "<pre>" + escape(text) + "</pre>", keyboard)
@@ -652,6 +659,6 @@ class BotApp(Administration):
                 await asyncio.sleep(3)
 
     async def close(self):
-        tasks = [*self.jobs.values(), *self.live_feeds.values(), *self.update_tasks]
+        tasks = [*self.jobs.values(), *self.live_feeds.values(), *self.update_tasks, *self.site_test_tasks.values()]
         for task in tasks: task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)

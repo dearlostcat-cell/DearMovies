@@ -1,6 +1,6 @@
 id: gokuhd
 name: GokuHD
-version: '1.1'
+version: '1.2'
 parser: rogmovies
 content_root: .single-entry-body
 screenshot_hosts:
@@ -120,4 +120,4 @@ features:
   description: true
   tagline: true
   director: true
-search_api: ''
+search_api: /search.php

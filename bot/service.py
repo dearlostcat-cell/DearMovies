@@ -97,6 +97,19 @@ class Catalog:
         async def load():
             start = time.monotonic()
             all_results, last_error = [], None
+            if site.parser == 'kuroiru' and not settings.mock_mode:
+                from .anime import search
+                try:
+                    results = await search(self.network, site, query)
+                    await self.record_health(site.id, True, time.monotonic()-start)
+                    if site.features.get('search_cache', True):
+                        await self.store.put('cache', key, [x.model_dump() for x in results], settings.search_ttl)
+                    await self.store.log(job, user, 'SEARCH_SITE_SUCCESS', site=site.id, count=len(results), stage='search')
+                    return results
+                except FlowError as error:
+                    await self.record_health(site.id, False, time.monotonic()-start, error.code)
+                    await self.store.log(job, user, 'SITE_FAILED', site=site.id, reason=error.code, message=error.message)
+                    raise
             if site.parser in {"hdhub", "rogmovies"} and site.search_api and not settings.mock_mode:
                 from .hdsearch import search
                 try:
@@ -174,16 +187,10 @@ class Catalog:
         return selected, failed
 
     async def anime_search(self, query, job, user):
-        from .anime import search
         if not query or len(query)>200: raise FlowError("INPUT","Use an anime name between 1 and 200 characters")
         site=self.registry.sites["kuroiru"]
         if not await self.enabled(site): raise FlowError("UNAVAILABLE","Anime source is disabled")
-        key=uid("anime-search",site.model_dump_json(),query)
-        cached=await self.store.get("cache",key)
-        if cached is not None:return [SearchResult.model_validate(x) for x in cached],[]
-        result=await self.shared.get(key,lambda:search(self.network,site,query))
-        await self.store.put("cache",key,[x.model_dump() for x in result],self.registry.settings.search_ttl)
-        return result,[]
+        return await self.search_one(site, query, job, user), []
 
     async def expand_collection(self,media,parent):
         if self.registry.sites[media.refs[0].site].parser == 'rogmovies':
@@ -199,7 +206,7 @@ class Catalog:
             reject_blocked(response)
         return episode_collection(response.text,response.url,parent,site)
 
-    async def details(self, result: SearchResult, job, user):
+    async def details(self, result: SearchResult, job, user, force_refresh=False):
         result = result.model_copy(update={'refs': [ref for ref in result.refs if ref.site in self.registry.sites]})
         if not result.refs: raise FlowError('UNAVAILABLE', 'This source has been removed. Start a new search.')
         if result.refs and self.registry.sites[result.refs[0].site].parser == "kuroiru":
@@ -207,9 +214,9 @@ class Catalog:
             site=self.registry.sites[result.refs[0].site]
             if not await self.enabled(site):raise FlowError("UNAVAILABLE","Anime source is disabled")
             key=uid("anime-detail",site.model_dump_json(),result.id)
-            cached=await self.store.get("cache",key)
+            cached=await self.store.get("cache",key) if not force_refresh else None
             if cached:return Media.model_validate(cached)
-            media=await self.shared.get(key,lambda:details(self.network,site,result))
+            media=await self.shared.get(key + (':fresh' if force_refresh else ''),lambda:details(self.network,site,result))
             await self.store.put("cache",key,media.model_dump(),self.registry.settings.detail_ttl)
             return media
 
@@ -217,14 +224,14 @@ class Catalog:
             site = self.registry.sites.get(ref.site)
             if not site or not await self.enabled(site): return 1e9
             health = await self.health(ref.site)
-            return site.priority + health["consecutive"] * 20 + health["latency"] + (10000 if health["cooldown_until"] > time.time() else 0)
+            return site.priority + health["consecutive"] * 20 + health["latency"] + (10000 if not force_refresh and health["cooldown_until"] > time.time() else 0)
         refs = sorted(zip(result.refs, await asyncio.gather(*(score(r) for r in result.refs))), key=lambda x: x[1])
         last = None
         for ref, value in refs:
             if value >= 10000: continue
             site = self.registry.sites[ref.site]
             key = uid("details", site.id, site.model_dump_json(), ref.url, self.registry.settings.mock_mode)
-            cached = await self.store.get("cache", key) if site.features.get("detail_cache", True) else None
+            cached = await self.store.get("cache", key) if site.features.get("detail_cache", True) and not force_refresh else None
             if cached:
                 await self.store.log(job, user, "CACHE_HIT", site=site.id, stage="details")
                 media = Media.model_validate(cached)
@@ -259,7 +266,7 @@ class Catalog:
                     await self.record_health(site.id, False, time.monotonic() - begin, error.code)
                     raise
             try:
-                media = (await self.shared.get(key, load)).model_copy(deep=True)
+                media = (await self.shared.get(key + (':fresh' if force_refresh else ''), load)).model_copy(deep=True)
                 media.id, media.refs = result.id, [ref, *[r for r in result.refs if r != ref]]
                 return media
             except FlowError as e:

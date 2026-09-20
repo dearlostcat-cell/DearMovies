@@ -37,6 +37,11 @@ def recovery_links(doc, base, allowed, provider_for):
             return
         if target not in candidates and len(candidates)<16:candidates.append(target)
     for node in doc.select('a[href], [data-href], [data-url], [data-download]')[:250]:
+        if any(parent.name in {'nav', 'header', 'footer', 'aside'} or re.search(
+            r'(?:^|[\s_-])(?:ad|ads|advertisement|menu|related|widget)(?:$|[\s_-])',
+            ' '.join(parent.get('class', []))+' '+parent.get('id', ''), re.I)
+            for parent in [node, *node.parents] if getattr(parent, 'attrs', None) is not None):
+            continue
         label=node.get_text(' ',strip=True)+' '+str(node.get('id',''))+' '+str(node.get('class',''))
         target=node.get('href') or node.get('data-href') or node.get('data-url') or node.get('data-download')
         if not target:continue

@@ -82,7 +82,7 @@ class Store:
             query = select(self.events)
             for key, value in filters.items():
                 if key == "since": query = query.where(self.events.c.timestamp >= value)
-                elif key == "errors": query = query.where(self.events.c.code.in_(["JOB_FAILED", "PROVIDER_FAILED", "SITE_FAILED", "PARSER_CHANGED", "BLOCKED", "CONFIG_ERROR"]))
+                elif key == "errors": query = query.where(self.events.c.code.in_(["JOB_FAILED", "PROVIDER_FAILED", "SITE_FAILED", "SITE_TEST_FAILED", "PARSER_CHANGED", "BLOCKED", "CONFIG_ERROR"]))
                 elif key in {"job", "user_id", "site", "provider"}: query = query.where(self.events.c[key] == str(value))
             with self.engine.connect() as conn:
                 return [dict(r) for r in conn.execute(query.order_by(self.events.c.id.desc()).limit(limit)).mappings()]
@@ -99,7 +99,7 @@ class Store:
         def run():
             with self.engine.connect() as conn:
                 # Cache/session records may contain transient source tokens; exclude them.
-                return [dict(r) for r in conn.execute(select(self.kv).where(~self.kv.c.space.in_(["cache", "sessions", "inspect", "poster"]))).mappings()]
+                return [dict(r) for r in conn.execute(select(self.kv).where(~self.kv.c.space.in_(["cache", "sessions", "inspect", "poster", "site_tests", "site_test_latest"]))).mappings()]
         return await asyncio.to_thread(run)
 
     async def close(self): await asyncio.to_thread(self.engine.dispose)
