@@ -56,11 +56,16 @@ class Catalog:
             await self.store.put("health", site_id, state)
 
     async def snapshot(self, html, site, stage, job):
-        if not self.registry.settings.debug_snapshots: return
+        diagnostic = getattr(self.network, 'diagnostics', False)
+        if not self.registry.settings.debug_snapshots and not diagnostic: return
         doc = soup(html)
         for node in doc.select("script, style, input, textarea, meta, link"): node.decompose()
         for node in doc.find_all(True):
             node.attrs = {k: (redact(str(v)) if k in {"href", "src", "action"} else v) for k, v in node.attrs.items() if k in {"class", "id", "href", "src", "action"}}
+        if diagnostic:
+            await self.store.put('inspect', job, {'site':site, 'stage':stage, 'html':str(doc)[:750000],
+                                                'note':'Scripts, input fields and URL paths removed.'}, 86400)
+        if not self.registry.settings.debug_snapshots: return
         folder = self.registry.root / "data/snapshots"
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f"{int(time.time())}-{site}-{job}-{stage}.html"

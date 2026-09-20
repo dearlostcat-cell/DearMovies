@@ -17,6 +17,7 @@ def test_buttons(job, details=False):
 
 
 class DiagnosticNetwork:
+    diagnostics = True
     def __init__(self, network, store, job, user, site, stage):
         self.network, self.store = network, store
         self.job, self.user, self.site, self.stage = job, user, site, stage
@@ -97,6 +98,10 @@ class SiteTests:
                     await self.store.log(job, user, 'SITE_TEST_FAILED', site=ident, stage=stage, reason=reason, message=message)
                     try: await self.tg.text(chat, escape(f'{site.name} {stage} test failed: {message}')+f'\nJob: {job}', test_buttons(job))
                     except FlowError: pass
+                    if await self.store.get('inspect', job):
+                        try: await self.tg.text(chat, 'Parser report captured. Send this report to diagnose the page layout.',
+                                                [[{'text': 'Download parser report', 'callback_data': 'admin:inspect:'+job}]])
+                        except FlowError: pass
                 finally:
                     if record['status'] in {'queued', 'running'}: record['status'] = 'cancelled'
                     try: await self.store.put('site_tests', job, record, 86400)

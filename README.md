@@ -1,4 +1,4 @@
-# Lost Movies — server edition 2.3.0
+# Lost Movies — server edition 2.3.1
 
 See [SITE_DIAGNOSTICS.md](SITE_DIAGNOSTICS.md) for the new automatic site checks, per-test logs, and upgrade steps.
 

@@ -12,7 +12,8 @@ async def search(network,site,query):
             api = urljoin(site.base_url, site.search_api)
             params = {'q':query,'page':page} if site.parser == 'rogmovies' else {'q':query,'query_by':'post_title,category,stars,director,imdb_id','query_by_weights':'4,2,2,2,4','sort_by':'sort_by_date:desc','limit':15,'highlight_fields':'none','use_cache':'true','page':page}
             url=api+'?'+urlencode(params)
-            response=await network.fetch(session,url,[urlsplit(api).hostname],headers={'Origin':site.base_url.rstrip('/'),'Referer':site.base_url.rstrip('/')+'/'},max_bytes=1500000)
+            allowed=list({urlsplit(x).hostname for x in [api,site.base_url,*site.mirrors]})
+            response=await network.fetch(session,url,allowed,headers={'Origin':site.base_url.rstrip('/'),'Referer':site.base_url.rstrip('/')+'/'},max_bytes=1500000)
             reject_blocked(response)
             try:data=json.loads(response.text);hits=data['hits']
             except (ValueError,KeyError,TypeError):raise FlowError('PARSER_CHANGED','HDHub search API response changed')

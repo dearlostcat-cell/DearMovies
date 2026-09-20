@@ -13,7 +13,8 @@ image_base: https://static.kuroiru.co
 enabled: true
 priority: 10
 base_url: https://new2.rogmovies.click
-mirrors: []
+mirrors:
+- https://rogmovies.onl
 capabilities:
   movies: true
   series: true

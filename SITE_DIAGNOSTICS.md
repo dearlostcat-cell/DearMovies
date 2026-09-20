@@ -1,4 +1,8 @@
-# Site diagnostics — 2.3.0
+# Site diagnostics — 2.3.1
+
+2.3.1 adds the verified RogMovies `rogmovies.onl` mirror to bundled and saved configurations. API requests now permit configured catalogue mirrors, just as HTML requests already do. Other unconfigured destinations remain blocked.
+
+Failed parser tests now retain a sanitized HTML structure for 24 hours. Use **Download parser report** on the failure message or `/inspect JOB_ID`. Scripts, input fields, most attributes and URL paths are removed. The report preserves selectors and visible text to help repair layouts that cannot be fetched from the development machine. Review the JSON before sharing it.
 
 In a private owner/admin chat:
 
@@ -25,7 +29,7 @@ HTTP request logs retain host, response status, byte count and truncation flag, 
 
 1. Back up the database and current project. Replace application files with this archive, keeping your `.env`, hosting secrets, database and mounted data volume.
 2. For GitHub deployment, commit the updated files to your repository and redeploy the service. For Docker Compose, run `docker compose up -d --build` from the project folder. Run only one polling instance per bot token.
-3. Verify `/version` reports **2.3.0**, then run `/sites`. Use its log buttons to check results from your actual server.
+3. Verify `/version` reports **2.3.1**, then run `/sites`. Use its log buttons to check results from your actual server.
 
 This archive has not been pushed or deployed automatically. It includes the existing Docker/server deployment files; it is not a prebuilt Docker image.
 

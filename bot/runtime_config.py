@@ -26,6 +26,9 @@ async def load_runtime(root, store, value=None):
     site = registry.sites.get('hdhub4u')
     if site and 'https://new6.hdhub4u.cl' not in site.mirrors:
         site.mirrors.append('https://new6.hdhub4u.cl')
+    site = registry.sites.get('rogmovies')
+    if site and 'https://rogmovies.onl' not in site.mirrors:
+        site.mirrors.append('https://rogmovies.onl')
     # Add this exact supported download host to persisted configurations too.
     # A saved override must not hide the bundled v2.2.2 host correction.
     for ident in ('generator', 'hubcloud'):
