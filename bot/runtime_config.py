@@ -24,6 +24,17 @@ async def load_runtime(root, store, value=None):
             if ident!=obj.id: raise ValueError('Configuration ID mismatch')
             dest[ident]=obj
     site = registry.sites.get('hdhub4u')
+    if site:
+        for host in ('hubcdn.wiki', 'greenmotors.club', 'hubdrive.pics'):
+            if host not in site.provider_hosts: site.provider_hosts.append(host)
+    for ident, hosts, allowed in (
+        ('hubdrive', ['hubdrive.pics'], ['hubdrive.pics']),
+        ('greenmount', ['greenmotors.club'], ['greenmotors.club', 'hubdrive.pics']),
+    ):
+        provider = registry.providers.get(ident)
+        if provider:
+            provider.hosts = list(dict.fromkeys([*provider.hosts, *hosts]))
+            provider.allowed_hosts = list(dict.fromkeys([*provider.allowed_hosts, *allowed]))
     if site and 'https://new6.hdhub4u.cl' not in site.mirrors:
         site.mirrors.append('https://new6.hdhub4u.cl')
     site = registry.sites.get('rogmovies')

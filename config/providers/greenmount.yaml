@@ -1,9 +1,12 @@
 id: greenmount
 version: '1'
 hosts:
+- greenmotors.club
 - greenmountmotors.com
 path_pattern: .*
 allowed_hosts:
+- greenmotors.club
+- hubdrive.pics
 - greenmountmotors.com
 - hubdrive.tips
 - hubcloud.ist

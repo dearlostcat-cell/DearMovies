@@ -1,4 +1,6 @@
-# Site diagnostics — 2.3.1
+# Site diagnostics — 2.3.2
+
+2.3.2 fixes the supplied HDHub4u DeAr page returning zero variants: its five download links use previously unconfigured hosts. Catalogue rules now retain `hubcdn.wiki`, `greenmotors.club` and `hubdrive.pics`. The latter two use the existing Greenmount and HubDrive handlers; persisted overrides receive the same exact-host additions without replacing owner domains. The supplied hubcdn link returned an error page during inspection and has no verified resolver handler. No end-to-end download success is claimed.
 
 2.3.1 adds the verified RogMovies `rogmovies.onl` mirror to bundled and saved configurations. API requests now permit configured catalogue mirrors, just as HTML requests already do. Other unconfigured destinations remain blocked.
 
@@ -29,7 +31,7 @@ HTTP request logs retain host, response status, byte count and truncation flag, 
 
 1. Back up the database and current project. Replace application files with this archive, keeping your `.env`, hosting secrets, database and mounted data volume.
 2. For GitHub deployment, commit the updated files to your repository and redeploy the service. For Docker Compose, run `docker compose up -d --build` from the project folder. Run only one polling instance per bot token.
-3. Verify `/version` reports **2.3.1**, then run `/sites`. Use its log buttons to check results from your actual server.
+3. Verify `/version` reports **2.3.2**, then run `/sites`. Use its log buttons to check results from your actual server.
 
 This archive has not been pushed or deployed automatically. It includes the existing Docker/server deployment files; it is not a prebuilt Docker image.
 

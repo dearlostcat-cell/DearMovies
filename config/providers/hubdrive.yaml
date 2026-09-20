@@ -1,7 +1,7 @@
 id: hubdrive
 version: "1.2"
-hosts: [hubdrive.tips, hubdrive.me, hubdrive.sbs]
-allowed_hosts: [hubdrive.tips, hubdrive.me, hubdrive.sbs, hubcloud.ist, hubcloud.cx, hubcloud.bz, hubcloud.foo, hubcloud.one, hubcloud.in, hubcloud.ink, hubcloud.fyi]
+hosts: [hubdrive.tips, hubdrive.me, hubdrive.sbs, hubdrive.pics]
+allowed_hosts: [hubdrive.tips, hubdrive.me, hubdrive.sbs, hubdrive.pics, hubcloud.ist, hubcloud.cx, hubcloud.bz, hubcloud.foo, hubcloud.one, hubcloud.in, hubcloud.ink, hubcloud.fyi]
 mode: links
 link_selectors:
   - 'a[href*="hubcloud."]'
